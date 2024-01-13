@@ -205,14 +205,24 @@ class GermanDataset():
     def prepare_ndarray(self):
         self.X_train = self.X_train_.to_numpy(dtype=np.float64)
         self.Y_train = self.Y_train_.to_numpy(dtype=np.float64)
-        self.Z_train = self.Z_train_.to_numpy(dtype=np.float64)
+        
+        #make an array of Z_train, each element corresponds to sensitive attr
+        #self.Z_train = self.Z_train_.to_numpy(dtype=np.float64)
+        self.Z_train = np.array([x.to_numpy(dtype=np.float64) for x in self.Z_train_])
+
+        #x_train together with all sensitive attr
         self.XZ_train = np.concatenate([self.X_train, self.Z_train.reshape(-1,1)], axis=1)
 
         self.X_test = self.X_test_.to_numpy(dtype=np.float64)
         self.Y_test = self.Y_test_.to_numpy(dtype=np.float64)
-        self.Z_test = self.Z_test_.to_numpy(dtype=np.float64)
-        self.XZ_test = np.concatenate([self.X_test, self.Z_test.reshape(-1,1)], axis=1)
-        self.sensitive_attrs = sorted(list(set(self.Z_train)))
+
+        #make an array of Z_test, each element corresponds to sensitive attr
+        #self.Z_test = self.Z_test_.to_numpy(dtype=np.float64)
+        self.Z_test = np.array([x.to_numpy(dtype=np.float64) for x in self.Z_test_])
+
+        #x_test together with all sensitive attr
+        self.XZ_test = [np.concatenate([self.X_test, self.Z_test.reshape(-1,1)], axis=1)]
+        self.sensitive_attrs = np.array([sorted(list(set(x))) for x in self.Z_train])
         return None
 
     def get_dataset_in_ndarray(self):
