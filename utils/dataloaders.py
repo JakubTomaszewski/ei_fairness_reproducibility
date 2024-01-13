@@ -115,12 +115,25 @@ class GermanDataset():
 
         train_dataset, test_dataset = self.preprocess_german_dataset(include_sex)
 
-        self.Z_train_ = train_dataset['z']
+        #self.Z_train_ = train_dataset['z']
+        self.Z_train_ = train_dataset['z1']
+
         self.Y_train_ = train_dataset['y']
-        self.X_train_ = train_dataset.drop(labels=['z','y'], axis=1)
-        self.Z_test_ = test_dataset['z']
+
+        #self.X_train_ = train_dataset.drop(labels=['z','y'], axis=1)
+        self.X_train_ = train_dataset.drop(labels=['z1', 'z2', 'y'], axis=1)
+
+        #self.Z_test_ = test_dataset['z']
+        self.Z_test_ = test_dataset['z1']
+
         self.Y_test_ = test_dataset['y']
-        self.X_test_ = test_dataset.drop(labels=['z','y'], axis=1)
+
+        #self.X_test_ = test_dataset.drop(labels=['z','y'], axis=1)
+        self.X_test_ = test_dataset.drop(labels=['z1', 'z2', 'y'], axis=1)
+        
+        if include_sex:
+            self.Z_train_.append(train_dataset['z2'])
+            self.Z_test_.append(test_dataset['z2'])
 
         self.prepare_ndarray()
 
@@ -137,6 +150,7 @@ class GermanDataset():
         test_dataset : dataframe
             test dataset
         '''
+        # male-0 female-1
         replacement = {
                     'A91': 0,
                     'A93': 0,
@@ -167,8 +181,10 @@ class GermanDataset():
         # Sex
         if include_sex:
             data_encode["Sex"] = data_encode["Sex"].replace(replacement).astype(int)
+            data_encode=data_encode.rename(columns = {'Sex':'z2'})
 
-        data_encode=data_encode.rename(columns = {'Age':'z'})
+        data_encode=data_encode.rename(columns = {'Age':'z1'})
+
 
         data_encode
 
@@ -196,7 +212,6 @@ class GermanDataset():
         self.Y_test = self.Y_test_.to_numpy(dtype=np.float64)
         self.Z_test = self.Z_test_.to_numpy(dtype=np.float64)
         self.XZ_test = np.concatenate([self.X_test, self.Z_test.reshape(-1,1)], axis=1)
-        
         self.sensitive_attrs = sorted(list(set(self.Z_train)))
         return None
 
