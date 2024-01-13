@@ -110,10 +110,10 @@ class IncomeDataset():
         self.C_max = [24]
 
 class GermanDataset():
-    def __init__(self, device):
+    def __init__(self, device, include_sex=False):
         self.device = device
 
-        train_dataset, test_dataset = self.preprocess_german_dataset()
+        train_dataset, test_dataset = self.preprocess_german_dataset(include_sex)
 
         self.Z_train_ = train_dataset['z']
         self.Y_train_ = train_dataset['y']
@@ -126,7 +126,7 @@ class GermanDataset():
 
         self.set_improvable_features()
 
-    def preprocess_german_dataset(self):
+    def preprocess_german_dataset(self, include_sex=False):
         '''
         Function to load and preprocess German dataset
 
@@ -137,6 +137,13 @@ class GermanDataset():
         test_dataset : dataframe
             test dataset
         '''
+        replacement = {
+                    'A91': 0,
+                    'A93': 0,
+                    'A94': 0, 
+                    'A92': 1, 
+                    'A95': 1,
+        }
         dataset = pd.read_csv('../data/german.data',header = None, delim_whitespace = True)
 
         dataset.columns=['Existing-Account-Status','Month-Duration','Credit-History','Purpose','Credit-Amount','Saving-Account','Present-Employment','Instalment-Rate','Sex','Guarantors','Residence','Property','Age','Installment','Housing','Existing-Credits','Job','Num-People','Telephone','Foreign-Worker','Status']
@@ -147,6 +154,7 @@ class GermanDataset():
         NumericalFeatures =['Month-Duration','Credit-Amount']
 
         data_encode=dataset.copy()
+        
         label_encoder = LabelEncoder()
         for x in CategoricalFeatures:
             data_encode[x]=label_encoder.fit_transform(data_encode[x])
@@ -155,7 +163,10 @@ class GermanDataset():
 
         data_encode.loc[data_encode['Age']<=30,'Age'] = 0
         data_encode.loc[data_encode['Age']>30,'Age'] = 1
-
+        
+        # Sex
+        if include_sex:
+            data_encode["Sex"] = data_encode["Sex"].replace(replacement).astype(int)
 
         data_encode=data_encode.rename(columns = {'Age':'z'})
 
