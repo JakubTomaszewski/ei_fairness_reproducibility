@@ -109,21 +109,23 @@ def trainer_kde_fair(model, dataset, optimizer, device, n_epochs, batch_size, z_
                 else:
                     Yhat_max = PGD_effort(model, dataset, x_batch_e, effort_iter, effort_lr, delta_effort)
                 Pr_Ytilde1 = CDF_tau(Yhat_max.detach(),h,tau)
-                for z in sensitive_attrs:
-                    if torch.sum(z_batch_e==z)==0:
-                        continue
-                    Pr_Ytilde1_Z = CDF_tau(Yhat_max.detach()[z_batch_e==z],h,tau)
-                    m_z = z_batch_e[z_batch_e==z].shape[0]
-                    m = z_batch_e.shape[0]
 
-                    Delta_z = Pr_Ytilde1_Z-Pr_Ytilde1
-                    Delta_z_grad = torch.dot(phi((tau-Yhat_max.detach()[z_batch_e==z])/h).view(-1), 
-                                              Yhat_max[z_batch_e==z].view(-1))/h/m_z
-                    Delta_z_grad -= torch.dot(phi((tau-Yhat_max.detach())/h).view(-1), 
-                                              Yhat_max.view(-1))/h/m
+                for i, sensitive_attr in enumerate(sensitive_attrs):
+                    for z in sensitive_attr:
+                        if torch.sum(z_batch_e==z)==0:
+                            continue
+                        Pr_Ytilde1_Z = CDF_tau(Yhat_max.detach()[z_batch_e[:, i]==z],h,tau)
+                        m_z = z_batch_e[z_batch_e[:, i]==z].shape[0]
+                        m = z_batch_e[:, i].shape[0]
 
-                    Delta_z_grad *= grad_Huber(Delta_z, delta_huber)
-                    f_loss += Delta_z_grad
+                        Delta_z = Pr_Ytilde1_Z-Pr_Ytilde1
+                        Delta_z_grad = torch.dot(phi((tau-Yhat_max.detach()[z_batch_e[:, i]==z])/h).view(-1), 
+                                                Yhat_max[z_batch_e[:, i]==z].view(-1))/h/m_z
+                        Delta_z_grad -= torch.dot(phi((tau-Yhat_max.detach())/h).view(-1), 
+                                                Yhat_max.view(-1))/h/m
+
+                        Delta_z_grad *= grad_Huber(Delta_z, delta_huber)
+                        f_loss += Delta_z_grad
 
             cost += lambda_*f_loss
             
@@ -249,13 +251,14 @@ def trainer_fb_fair(model, dataset, optimizer, device, n_epochs, batch_size, z_b
 
                 loss_mean = loss_func(Yhat_max.reshape(-1), torch.ones(len(Yhat_max)))
                 loss_z = torch.zeros(len(sensitive_attrs), device = device)
-                for z in sensitive_attrs:
-                    z = int(z)
-                    group_idx = z_batch_e == z
-                    if group_idx.sum() == 0:
-                        continue
-                    loss_z[z] = loss_func(Yhat_max.reshape(-1)[group_idx], torch.ones(group_idx.sum()))
-                    f_loss += torch.abs(loss_z[z] - loss_mean)
+                for i, sensitive_attr in enumerate(sensitive_attrs):
+                    for z in sensitive_attr:
+                        z = int(z)
+                        group_idx = z_batch_e == z
+                        if group_idx.sum() == 0:
+                            continue
+                        loss_z[z] = loss_func(Yhat_max.reshape(-1)[group_idx[:, i]], torch.ones(group_idx[:, i].sum()))
+                        f_loss += torch.abs(loss_z[z] - loss_mean)
                     
             elif fairness == 'BE':
                 x_batch_e = x_batch[(Yhat<tau).reshape(-1),:]
@@ -267,13 +270,14 @@ def trainer_fb_fair(model, dataset, optimizer, device, n_epochs, batch_size, z_b
 
                 loss_mean = (len(x_batch_e)/len(x_batch))*loss_func(Yhat_max.reshape(-1), torch.ones(len(Yhat_max)))
                 loss_z = torch.zeros(len(sensitive_attrs), device = device)
-                for z in sensitive_attrs:
-                    z = int(z)
-                    group_idx = z_batch_e == z
-                    if group_idx.sum() == 0:
-                        continue
-                    loss_z[z] = (z_batch_e[z_batch_e==z].shape[0]/z_batch[z_batch==z].shape[0])*loss_func(Yhat_max.reshape(-1)[group_idx], torch.ones(group_idx.sum()))
-                    f_loss += torch.abs(loss_z[z] - loss_mean)
+                for i, sensitive_attr in enumerate(sensitive_attrs):
+                    for z in sensitive_attr:
+                        z = int(z)
+                        group_idx = z_batch_e == z
+                        if group_idx.sum() == 0:
+                            continue
+                        loss_z[z] = (z_batch_e[z_batch_e[:, i]==z].shape[0]/z_batch[z_batch[:, i]==z].shape[0])*loss_func(Yhat_max.reshape(-1)[group_idx[:, i]], torch.ones(group_idx[:, i].sum()))
+                        f_loss += torch.abs(loss_z[z] - loss_mean)
 
             cost += lambda_*f_loss
             
@@ -390,14 +394,15 @@ def trainer_fc_fair(model, dataset, optimizer, device, n_epochs, batch_size, z_b
             f_loss = 0
 
             # EI_Constraint (Equal Improvability)
-            if fairness == 'EI' and torch.sum(Yhat<tau)>0:
-                x_batch_e = x_batch[(Yhat<tau).reshape(-1),:]
-                z_batch_e = z_batch[(Yhat<tau).reshape(-1)]
-                if optimal_effort is True:
-                    Yhat_max = Optimal_effort(model, dataset, x_batch_e, delta_effort, effort_norm)
-                else:
-                    Yhat_max = PGD_effort(model, dataset, x_batch_e, effort_iter, effort_lr, delta_effort)
-                f_loss += torch.square(torch.mean((z_batch_e-z_batch_e.mean())*Yhat_max.reshape(-1)))
+            for i in range(len(sensitive_attrs)):
+                if fairness == 'EI' and torch.sum(Yhat<tau)>0:
+                    x_batch_e = x_batch[(Yhat<tau).reshape(-1),:]
+                    z_batch_e = z_batch[(Yhat<tau).reshape(-1), i]
+                    if optimal_effort is True:
+                        Yhat_max = Optimal_effort(model, dataset, x_batch_e, delta_effort, effort_norm)
+                    else:
+                        Yhat_max = PGD_effort(model, dataset, x_batch_e, effort_iter, effort_lr, delta_effort)
+                    f_loss += torch.square(torch.mean((z_batch_e-z_batch_e.mean())*Yhat_max.reshape(-1)))
 
             cost += lambda_*f_loss
             
