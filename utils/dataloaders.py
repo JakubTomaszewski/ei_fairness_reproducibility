@@ -217,8 +217,8 @@ class GermanDataset():
                (X_test_, Y_test_, Z_test_, XZ_test_)
 
     def set_improvable_features(self):
-        self.U_index = np.setdiff1d(np.arange(20),[0,5,14,16])
-        self.C_index = [0,3,7,9]
+        self.U_index = np.setdiff1d(np.arange(20),[0,5,14,16]) #indices we can't improve
+        self.C_index = [0,3,7,9]   # is this improvable feature, and if so why is it different 
         self.C_min = [0,0,0,0]
         self.C_max = [3,4,2,3]
 
