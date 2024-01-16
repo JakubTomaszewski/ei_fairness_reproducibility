@@ -10,11 +10,11 @@ def PGD_effort(model, dataset, x, iter, lr, delta):
     for i in range(efforts.shape[1]):
         if i not in dataset.U_index:
             improvable_indices.append(i)
-    C_min = torch.zeros(x[:,dataset.C_index].shape)
+    C_min = torch.zeros(x[:,dataset.C_index].shape)  
     C_max = torch.zeros(x[:,dataset.C_index].shape)
     for j in range(len(dataset.C_index)):        
-        C_min[:, j] = dataset.C_min[j]-x[:,dataset.C_index[j]]
-        C_max[:, j] = dataset.C_max[j]-x[:,dataset.C_index[j]]
+        C_min[:, j] = dataset.C_min[j]-x[:,dataset.C_index[j]]  #record the distance of each data point to the min value of feature
+        C_max[:, j] = dataset.C_max[j]-x[:,dataset.C_index[j]]  #record the distance of each data point to the max value of feature
     
     loss = torch.nn.BCELoss(reduction='sum')
     for i in range(iter):

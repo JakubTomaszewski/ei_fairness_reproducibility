@@ -112,10 +112,10 @@ def trainer_kde_fair(model, dataset, optimizer, device, n_epochs, batch_size, z_
 
                 for i, sensitive_attr in enumerate(sensitive_attrs):
                     for z in sensitive_attr:
-                        if torch.sum(z_batch_e==z)==0:
+                        if torch.sum(z_batch_e[:, i]==z)==0:
                             continue
                         Pr_Ytilde1_Z = CDF_tau(Yhat_max.detach()[z_batch_e[:, i]==z],h,tau)
-                        m_z = z_batch_e[z_batch_e[:, i]==z].shape[0]
+                        m_z = z_batch_e[z_batch_e[:, i]==z, i].shape[0]
                         m = z_batch_e[:, i].shape[0]
 
                         Delta_z = Pr_Ytilde1_Z-Pr_Ytilde1
@@ -254,10 +254,10 @@ def trainer_fb_fair(model, dataset, optimizer, device, n_epochs, batch_size, z_b
                 for i, sensitive_attr in enumerate(sensitive_attrs):
                     for z in sensitive_attr:
                         z = int(z)
-                        group_idx = z_batch_e == z
+                        group_idx = z_batch_e[:, i] == z
                         if group_idx.sum() == 0:
                             continue
-                        loss_z[z] = loss_func(Yhat_max.reshape(-1)[group_idx[:, i]], torch.ones(group_idx[:, i].sum()))
+                        loss_z[z] = loss_func(Yhat_max.reshape(-1)[group_idx], torch.ones(group_idx.sum()))
                         f_loss += torch.abs(loss_z[z] - loss_mean)
                     
             elif fairness == 'BE':
@@ -273,10 +273,10 @@ def trainer_fb_fair(model, dataset, optimizer, device, n_epochs, batch_size, z_b
                 for i, sensitive_attr in enumerate(sensitive_attrs):
                     for z in sensitive_attr:
                         z = int(z)
-                        group_idx = z_batch_e == z
+                        group_idx = z_batch_e[:, i] == z
                         if group_idx.sum() == 0:
                             continue
-                        loss_z[z] = (z_batch_e[z_batch_e[:, i]==z].shape[0]/z_batch[z_batch[:, i]==z].shape[0])*loss_func(Yhat_max.reshape(-1)[group_idx[:, i]], torch.ones(group_idx[:, i].sum()))
+                        loss_z[z] = (z_batch_e[group_idx, i].shape[0]/z_batch[z_batch[:, i]==z, i].shape[0])*loss_func(Yhat_max.reshape(-1)[group_idx], torch.ones(group_idx.sum()))
                         f_loss += torch.abs(loss_z[z] - loss_mean)
 
             cost += lambda_*f_loss
