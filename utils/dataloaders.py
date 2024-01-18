@@ -202,7 +202,7 @@ class GermanDataset():
         self.Z_test = self.Z_test_.to_numpy(dtype=np.float64)
         self.XZ_test = [np.concatenate([self.X_test, self.Z_test.reshape(-1, len(self.sensitive_feature_labels))], axis=1)]
         self.sensitive_attrs = [list(np.unique(col).astype(int)) for col in self.Z_train.T]
-        return None
+        
 
     def get_dataset_in_ndarray(self):
         return (self.X_train, self.Y_train, self.Z_train, self.XZ_train),\
@@ -281,7 +281,6 @@ class SyntheticDataset():
         self.XZ_test = np.concatenate([self.X_test, self.Z_test.reshape(-1,1)], axis=1)
         
         self.sensitive_attrs = sorted(list(set(self.Z_train)))
-        return None
 
     def get_dataset_in_ndarray(self):
         return (self.X_train, self.Y_train, self.Z_train, self.XZ_train),\
