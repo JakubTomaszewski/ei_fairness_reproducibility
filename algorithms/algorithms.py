@@ -301,7 +301,7 @@ def trainer_fb_fair(model, dataset, optimizer, device, n_epochs, batch_size, z_b
                             continue
 
                         loss_z[z] = (z_batch_e[group_idx, sensitive_attr_idx].shape[0] / z_batch[z_batch[:, sensitive_attr_idx]==z, sensitive_attr_idx].shape[0]) * loss_func(Yhat_max.reshape(-1)[group_idx], torch.ones(num_group_samples, device=device))
-                    loss_mean = torch.mean(loss_z)
+                    loss_mean = torch.sum(loss_z)
                     f_loss = torch.sum(torch.abs(loss_z[z] - loss_mean)) #check
                     cost += lambda_ * f_loss
             
@@ -439,7 +439,7 @@ def trainer_fc_fair(model, dataset, optimizer, device, n_epochs, batch_size, z_b
                     Yhat_max = PGD_effort(model, dataset, x_batch_e, effort_iter, effort_lr, delta_effort, device=device)
 
                 # Handle multiple features
-                f_loss = torch.sum(torch.square(torch.mean((z_batch_e - z_batch_e.mean(axis=0)) * Yhat_max[:, None]))) #check why += and not =; where is /I
+                f_loss = torch.sum(torch.square(torch.mean((z_batch_e - z_batch_e.mean(axis=0)) * Yhat_max, axis=0))) #check why += and not =; where is /I
             cost += lambda_ * f_loss
             
             optimizer.zero_grad()
