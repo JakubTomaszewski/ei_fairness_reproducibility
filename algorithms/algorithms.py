@@ -269,7 +269,7 @@ def trainer_fb_fair(model, dataset, optimizer, device, n_epochs, batch_size, z_b
 
                 #loss_mean = loss_func(Yhat_max.reshape(-1), torch.ones(len(Yhat_max), device=device)) #check, everything will change 
                 for sensitive_attr_idx, sensitive_attr in enumerate(sensitive_attrs): # d * U_1 + d * U_2 + ... + d * U_k
-                    loss_z = torch.zeros(len(sensitive_attrs), device=device)
+                    loss_z = torch.zeros(len(sensitive_attr), device=device)
                     for z in sensitive_attr:
                         group_idx = z_batch_e[:, sensitive_attr_idx] == z
                         num_group_samples = group_idx.sum()
@@ -292,7 +292,7 @@ def trainer_fb_fair(model, dataset, optimizer, device, n_epochs, batch_size, z_b
 
                 #loss_mean = (len(x_batch_e)/len(x_batch))*loss_func(Yhat_max.reshape(-1), torch.ones(len(Yhat_max), device=device)) 
                 for sensitive_attr_idx, sensitive_attr in enumerate(sensitive_attrs):
-                    loss_z = torch.zeros(len(sensitive_attrs), device=device)
+                    loss_z = torch.zeros(len(sensitive_attr), device=device)
                     for z in sensitive_attr:
                         group_idx = z_batch_e[:, sensitive_attr_idx] == z
                         num_group_samples = group_idx.sum()
