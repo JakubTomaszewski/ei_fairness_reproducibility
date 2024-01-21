@@ -130,6 +130,10 @@ dmypy.json
 .pyre/
 
 # Local stuff
-.DS_Store
 *.DS_Store
 .vscode
+
+
+# Data files
+data
+*.arff
