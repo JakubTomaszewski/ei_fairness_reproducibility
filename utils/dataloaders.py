@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
@@ -66,10 +67,10 @@ class IncomeDataset():
         CategoricalFeatures=['COW','MAR', 'OCCP', 'POBP', 'RELP', 'RAC1P']
 
         df = pd.get_dummies(df, columns=CategoricalFeatures, drop_first=True)
-        df=df.rename(columns = {'PINCP':'y'})
+        df = df.rename(columns = {'PINCP':'y'})
         y = df['y']
         df = df.drop(columns=['y'])
-        df.insert(len(df.columns),column='y',value=y)
+        df.insert(len(df.columns), column='y', value=y)
 
         train_dataset, test_dataset = train_test_split(df, test_size=0.2)
         train_dataset = train_dataset.reset_index(drop=True)
@@ -113,10 +114,10 @@ class IncomeDataset():
                (X_test_, Y_test_, Z_test_, XZ_test_)
 
     def set_improvable_features(self):
-        self.U_index = np.setdiff1d(np.arange(785),[1])
-        self.C_index = [1]
-        self.C_min = [1]
-        self.C_max = [24]
+        self.U_index = np.setdiff1d(np.arange(785),[1])  # Non-improvable features
+        self.C_index = [1] # Improvable features
+        self.C_min = [1] # Min values for improvable features
+        self.C_max = [24] # Max values for improvable features
 
 class GermanDataset():
     def __init__(self, device):
@@ -149,7 +150,6 @@ class GermanDataset():
         dataset = pd.read_csv('../data/german.data',header = None, delim_whitespace = True)
 
         dataset.columns=['Existing-Account-Status','Month-Duration','Credit-History','Purpose','Credit-Amount','Saving-Account','Present-Employment','Instalment-Rate','Sex','Guarantors','Residence','Property','Age','Installment','Housing','Existing-Credits','Job','Num-People','Telephone','Foreign-Worker','Status']
-        dataset.head(5)
 
         CategoricalFeatures=['Credit-History','Purpose','Present-Employment', 'Sex','Guarantors','Property','Installment','Telephone','Foreign-Worker','Existing-Account-Status','Saving-Account','Housing','Job']
 
@@ -314,3 +314,101 @@ class SyntheticDataset():
         self.C_index = []
         self.C_min = []
         self.C_max = []
+
+
+class CompasDataset():
+    def __init__(self, 
+                 device,
+                 sensitive_feature_labels: list[str] = ["SEX"]
+                 ) -> None:
+        self.device = device
+        self.sensitive_feature_labels = sensitive_feature_labels
+
+        train_dataset, test_dataset = self.preprocess_income_dataset()
+
+        self.Z_train_ = train_dataset[self.sensitive_feature_labels]
+        self.Y_train_ = train_dataset['y']
+        self.X_train_ = train_dataset.drop(labels=[*self.sensitive_feature_labels, 'y'], axis=1)
+        self.Z_test_ = test_dataset[self.sensitive_feature_labels]
+        self.Y_test_ = test_dataset['y']
+        self.X_test_ = test_dataset.drop(labels=[*self.sensitive_feature_labels, 'y'], axis=1)
+
+        self.prepare_ndarray()
+        self.set_improvable_features()
+
+    def preprocess_income_dataset(self):
+        '''
+        Function to load and preprocess Income dataset
+
+        Return
+        ------
+        train_dataset : dataframe
+            train dataset
+        test_dataset : dataframe
+            test dataset
+        '''
+        if not os.path.exists('../data/compas-scores-two-years.csv'):
+            os.system('wget https://raw.githubusercontent.com/propublica/compas-analysis/master/compas-scores-two-years.csv -P ../data')
+
+        df = pd.read_csv('../data/compas-scores-two-years.csv')
+        columns = ["sex", "age", "race", "juv_fel_count", "juv_misd_count", "juv_other_count", "priors_count", "decile_score", "two_year_recid"]
+        categorical_features = ["race"]
+        label_column = "two_year_recid"
+        
+        df = df[columns]
+
+        if "sex" in self.sensitive_feature_labels:
+            df['sex'] = df['sex'].map({"Male": 1, "Female": 0}).astype(int)
+
+        if "age" in self.sensitive_feature_labels:
+            df['age'] = (df["age"] > 30).astype(int)
+
+        df = pd.get_dummies(df, columns=categorical_features, drop_first=True)
+        df.rename(columns = {label_column:'y'}, inplace=True)
+        y = df['y']
+        df = df.drop(columns=['y'])
+        df.insert(len(df.columns), column='y', value=y)
+
+        train_dataset, test_dataset = train_test_split(df, test_size=0.2)
+        train_dataset = train_dataset.reset_index(drop=True)
+        test_dataset = test_dataset.reset_index(drop=True)
+
+        if "age" not in self.sensitive_feature_labels:
+            scaler = StandardScaler()
+            train_dataset[['age']] = scaler.fit_transform(train_dataset[['age']])
+            test_dataset[['age']] = scaler.transform(test_dataset[['age']])
+
+        return train_dataset, test_dataset
+  
+
+    def prepare_ndarray(self):
+        self.X_train = self.X_train_.to_numpy(dtype=np.float64)
+        self.Y_train = self.Y_train_.to_numpy(dtype=np.float64)
+        self.Z_train = self.Z_train_.to_numpy(dtype=np.float64)
+        
+        self.XZ_train = np.concatenate([self.X_train, self.Z_train.reshape(-1, len(self.sensitive_feature_labels))], axis=1)
+
+        self.X_test = self.X_test_.to_numpy(dtype=np.float64)
+        self.Y_test = self.Y_test_.to_numpy(dtype=np.float64)
+        self.Z_test = self.Z_test_.to_numpy(dtype=np.float64)
+        self.XZ_test = np.concatenate([self.X_test, self.Z_test.reshape(-1, len(self.sensitive_feature_labels))], axis=1)
+        
+        self.sensitive_attrs = [list(np.unique(col).astype(int)) for col in self.Z_train.T]
+
+    def get_dataset_in_ndarray(self):
+        return (self.X_train, self.Y_train, self.Z_train, self.XZ_train),\
+               (self.X_test, self.Y_test, self.Z_test, self.XZ_test)
+
+    def get_dataset_in_tensor(self, validation=False, val_portion=.0):
+        X_train_, Y_train_, Z_train_, XZ_train_ = arrays_to_tensor(
+            self.X_train, self.Y_train, self.Z_train, self.XZ_train, self.device)
+        X_test_, Y_test_, Z_test_, XZ_test_ = arrays_to_tensor(
+            self.X_test, self.Y_test, self.Z_test, self.XZ_test, self.device)
+        return (X_train_, Y_train_, Z_train_, XZ_train_),\
+               (X_test_, Y_test_, Z_test_, XZ_test_)
+
+    def set_improvable_features(self):
+        self.U_index = np.setdiff1d(np.arange(self.X_train.shape[1]), [2, 3, 4, 5, 6])  # Non-improvable features
+        self.C_index = [2, 3, 4, 5, 6] # Improvable features
+        self.C_min = [0, 0, 0, 0, 1] # Min values for improvable features
+        self.C_max = [20, 13, 9, 38, 10] # Max values for improvable features
