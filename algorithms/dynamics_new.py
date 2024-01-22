@@ -184,11 +184,11 @@ class populationDynamics_gaussian(object):
         iler_disparities = np.zeros(len(data)//2)
         for i in range(len(data)//2): 
             efforts1, efforts2 = [], []
-            u0 = (bs[i * 2 + a] - data[i * 2]['mean'])/data[i * 2 ]['std']
-            u1 = (bs[i * 2 + a] - data[i * 2 + 1]['mean'])/data[i * 2 + 1]['std']
+            u0 = (bs[i * 2] - data[i * 2]['mean'])/data[i * 2 ]['std']
+            u1 = (bs[i * 2 + 1] - data[i * 2 + 1]['mean'])/data[i * 2 + 1]['std']
             u = min(u0, u1)
             for a in range(2):
-                mu, sigma = data[i * 2 + a]['mean'], data[a]['std']
+                mu, sigma = data[i * 2 + a]['mean'], data[i * 2 + a]['std']
                 effort1 = bs[i * 2 + a] - (data[i * 2 + a]['mean'] - 3*data[i * 2 + a]['std'])/data[i * 2 + a]['std']
                 effort2 = bs[i * 2 + a] - (data[i * 2 + a]['mean'] - u*data[i * 2 + a]['std'])/data[i * 2 + a]['std']
                 efforts1.append(effort1 / norm.cdf(bs[i * 2 + a], mu, sigma))
@@ -320,7 +320,8 @@ class populationDynamics_gaussian(object):
         for i in range(len(data)//2):
             mu0, sigma0, mu1, sigma1 = data[i* 2]['mean'], data[i * 2 + 1]['std'],\
                                          data[i* 2 + 1]['mean'], data[i* 2 + 1]['std']
-            titles.append(r'$\mu^{(0)}=$%.1f, $\sigma^{(0)}=$%.1f' % (mu0, sigma0), r'$\mu^{(1)}=$%.1f, $\sigma^{(1)}=$%.1f' % (mu1, sigma1))
+            titles.append(r'$\mu^{(0)}=$%.1f, $\sigma^{(0)}=$%.1f' % (mu0, sigma0))
+            titles.append(r'$\mu^{(1)}=$%.1f, $\sigma^{(1)}=$%.1f' % (mu1, sigma1))
         return titles
     
     def plot(self, data, truebs, bs = None, title = None):
@@ -334,7 +335,7 @@ class populationDynamics_gaussian(object):
                 ax[i * 2 + a].set_xlabel(labels[i * 2 + a], fontsize = 18)
                 ymin, ymax = ax[i * 2 + a].get_ylim()
                 ax[i * 2 + a].vlines(x = truebs[i * 2 + a], color = 'g', linestyle='-.', ymin = ymin, ymax = ymax)
-                if not bs is None: ax[a].vlines(x = bs[i * 2 + a], color = 'm', linestyle = '-', ymin = ymin, ymax = ymax)
+                if not bs is None: ax[i * 2 + a].vlines(x = bs[i * 2 + a], color = 'm', linestyle = '-', ymin = ymin, ymax = ymax)
             plt.title(title)
 
     def run(self, mode = 'true', n_iter = 20, delta = 0.5, c = 0, thres = .001, select_delta = False, plot = True):
