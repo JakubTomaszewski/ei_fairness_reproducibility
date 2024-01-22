@@ -316,21 +316,26 @@ class populationDynamics_gaussian(object):
             raise ValueError("Unexpected delta select mode %s! Supported mode: \"mean\" and \"median\"." % mode)
     
     def dataPrint(self, data):
-        mu0, sigma0, mu1, sigma1 = data[0]['mean'], data[0]['std'], data[1]['mean'], data[1]['std']
-        return (r'$\mu^{(0)}=$%.1f, $\sigma^{(0)}=$%.1f' % (mu0, sigma0), r'$\mu^{(1)}=$%.1f, $\sigma^{(1)}=$%.1f' % (mu1, sigma1))
-
+        titles = []
+        for i in range(len(data)//2):
+            mu0, sigma0, mu1, sigma1 = data[i* 2]['mean'], data[i * 2 + 1]['std'],\
+                                         data[i* 2 + 1]['mean'], data[i* 2 + 1]['std']
+            titles.append(r'$\mu^{(0)}=$%.1f, $\sigma^{(0)}=$%.1f' % (mu0, sigma0), r'$\mu^{(1)}=$%.1f, $\sigma^{(1)}=$%.1f' % (mu1, sigma1))
+        return titles
+    
     def plot(self, data, truebs, bs = None, title = None):
-        fig, ax = plt.subplots(nrows = 1, ncols = 2, sharey = True, sharex = True)
+        fig, ax = plt.subplots(nrows = len(data)//2, ncols = 2, sharey = True, sharex = True)
         labels = self.dataPrint(data)
-        for a in range(2):
-            mu, sigma = data[a]['mean'], data[a]['std']
-            x = np.linspace(mu - 3*sigma, mu + 3*sigma, 100)
-            ax[a].plot(x, norm.pdf(x, mu, sigma))
-            ax[a].set_xlabel(labels[a], fontsize = 18)
-            ymin, ymax = ax[a].get_ylim()
-            ax[a].vlines(x = truebs[a], color = 'g', linestyle='-.', ymin = ymin, ymax = ymax)
-            if not bs is None: ax[a].vlines(x = bs[a], color = 'm', linestyle = '-', ymin = ymin, ymax = ymax)
-        plt.title(title)
+        for i in range(len(data)//2):
+            for a in range(2):
+                mu, sigma = data[i * 2 + a]['mean'], data[i * 2 + a]['std']
+                x = np.linspace(mu - 3*sigma, mu + 3*sigma, 100)
+                ax[i * 2 + a].plot(x, norm.pdf(x, mu, sigma))
+                ax[i * 2 + a].set_xlabel(labels[i * 2 + a], fontsize = 18)
+                ymin, ymax = ax[i * 2 + a].get_ylim()
+                ax[i * 2 + a].vlines(x = truebs[i * 2 + a], color = 'g', linestyle='-.', ymin = ymin, ymax = ymax)
+                if not bs is None: ax[a].vlines(x = bs[i * 2 + a], color = 'm', linestyle = '-', ymin = ymin, ymax = ymax)
+            plt.title(title)
 
     def run(self, mode = 'true', n_iter = 20, delta = 0.5, c = 0, thres = .001, select_delta = False, plot = True):
         if mode == 'true':
