@@ -97,7 +97,7 @@ class populationDynamics_gaussian(object):
         return ws_distance
     
     def distance(self, data):
-        distances = np.zeros(len(data//2))
+        distances = np.zeros(len(data)//2)
         for i in range(len(data)//2): 
             mu0, sigma0, mu1, sigma1 = data[i * 2]['mean'], data[i * 2]['std'], \
                                         data[i * 2 + 1]['mean'], data[i * 2 + 1]['std']
@@ -106,18 +106,18 @@ class populationDynamics_gaussian(object):
 
     def errorRate(self, data, truebs, bs):
         error_rate = 0
-        for i in len(data)//2: 
+        for i in range(len(data)//2): 
             mu0, sigma0, mu1, sigma1 = data[i * 2]['mean'], data[i * 2]['std'], \
                                         data[i * 2 + 1]['mean'], data[i * 2 + 1]['std']
-            tb = truebs[i][0]
-            e0 = abs(norm.cdf(tb, mu0, sigma0) - norm.cdf(bs[i][0], mu0, sigma0))
-            e1 = abs(norm.cdf(tb, mu1, sigma1) - norm.cdf(bs[i][1], mu1, sigma1))
+            tb = truebs[i*2]
+            e0 = abs(norm.cdf(tb, mu0, sigma0) - norm.cdf(bs[i * 2], mu0, sigma0))
+            e1 = abs(norm.cdf(tb, mu1, sigma1) - norm.cdf(bs[i * 2 + 1], mu1, sigma1))
             error_rate += e0*self.group_frac[i][0]+e1*self.group_frac[i][1]
         return error_rate
         
     def trueBoundary(self, data, thres = 1e-3):
         #can be improved later by returning an arr instead of arr of arr (check)
-        tb = np.zeros((len(data)//2, 2))
+        tb = np.zeros(len(data))
         for i in range(len(data)//2):  
             if self.frac:
                 mu0, sigma0, mu1, sigma1 = data[i * 2]['mean'], data[i * 2]['std'], \
@@ -132,9 +132,9 @@ class populationDynamics_gaussian(object):
                         l = p
                     else:
                         u = p
-                tb[i] = np.ones(2) * p
+                tb[i * 2], tb[i * 2 + 1] = p, p
             else:
-                tb[i] = np.zeros(2)
+                tb[i * 2], tb[i * 2 + 1] = 0, 0
         return tb
         
     def dpDisp(self, data, bs, is_abs = True):
@@ -144,7 +144,7 @@ class populationDynamics_gaussian(object):
             pos = []
             for a in range(2):
                 mu, sigma = data[i * 2 + a]['mean'], data[i * 2 + a]['std']
-                pos.append(1-norm.cdf(bs[i][a], mu, sigma))
+                pos.append(1-norm.cdf(bs[i * 2 + a], mu, sigma))
             dp_disparities[i] = abs(pos[1] - pos[0]) if is_abs else pos[1] - pos[0]
         return dp_disparities
         
@@ -155,7 +155,7 @@ class populationDynamics_gaussian(object):
             pos = []
             for a in range(2):
                 mu, sigma = data[i *2 + a]['mean'], data[i * 2 + a]['std']
-                pos.append((norm.cdf(bs[i][a], mu + delta, sigma)-norm.cdf(bs[i][a], mu, sigma)) / norm.cdf(bs[i][a], mu, sigma))
+                pos.append((norm.cdf(bs[i * 2 + a], mu + delta, sigma)-norm.cdf(bs[i * 2 + a], mu, sigma)) / norm.cdf(bs[i * 2 + a], mu, sigma))
             ef_disparities[i] = abs(pos[1] - pos[0]) if is_abs else pos[1] - pos[0]
         return ef_disparities
 
@@ -165,7 +165,7 @@ class populationDynamics_gaussian(object):
             pos = []
             for a in range(2):
                 mu, sigma = data[i * 2 + a]['mean'], data[i * 2 + a]['std']
-                pos.append(norm.cdf(bs[i][a], mu + delta, sigma)-norm.cdf(bs[i][a], mu, sigma))
+                pos.append(norm.cdf(bs[i * 2 + a], mu + delta, sigma)-norm.cdf(bs[i * 2 + a], mu, sigma))
             be_disparities[i] = abs(pos[1] - pos[0]) if is_abs else pos[1] - pos[0]
         return be_disparities
     
@@ -175,8 +175,8 @@ class populationDynamics_gaussian(object):
             efforts = []
             for a in range(2):
                 mu, sigma = data[i * 2 + a]['mean'], data[i * 2 + a]['std']
-                effort = quad(lambda x: (bs[i][a]-x) * norm.pdf(x, mu, sigma), -np.inf, bs[i][a])[0]
-                efforts.append(effort / norm.cdf(bs[a], mu, sigma))
+                effort = quad(lambda x: (bs[i * 2 + a]-x) * norm.pdf(x, mu, sigma), -np.inf, bs[i * 2 + a])[0]
+                efforts.append(effort / norm.cdf(bs[i * 2 + a], mu, sigma))
             er_disparities[i] = abs(efforts[0] - efforts[1]) if is_abs else efforts[1] - efforts[0]
         return er_disparities
     
@@ -184,15 +184,15 @@ class populationDynamics_gaussian(object):
         iler_disparities = np.zeros(len(data)//2)
         for i in range(len(data)//2): 
             efforts1, efforts2 = [], []
-            u0 = (bs[i][0] - data[i * 2]['mean'])/data[i * 2 ]['std']
-            u1 = (bs[i][1] - data[i * 2 + 1]['mean'])/data[i * 2 + 1]['std']
+            u0 = (bs[i * 2 + a] - data[i * 2]['mean'])/data[i * 2 ]['std']
+            u1 = (bs[i * 2 + a] - data[i * 2 + 1]['mean'])/data[i * 2 + 1]['std']
             u = min(u0, u1)
             for a in range(2):
                 mu, sigma = data[i * 2 + a]['mean'], data[a]['std']
-                effort1 = bs[i][a] - (data[i * 2 + a]['mean'] - 3*data[i * 2 + a]['std'])/data[i * 2 + a]['std']
-                effort2 = bs[i][a] - (data[i * 2 + a]['mean'] - u*data[i * 2 + a]['std'])/data[i * 2 + a]['std']
-                efforts1.append(effort1 / norm.cdf(bs[i][a], mu, sigma))
-                efforts2.append(effort2 / norm.cdf(bs[i][a], mu, sigma))
+                effort1 = bs[i * 2 + a] - (data[i * 2 + a]['mean'] - 3*data[i * 2 + a]['std'])/data[i * 2 + a]['std']
+                effort2 = bs[i * 2 + a] - (data[i * 2 + a]['mean'] - u*data[i * 2 + a]['std'])/data[i * 2 + a]['std']
+                efforts1.append(effort1 / norm.cdf(bs[i * 2 + a], mu, sigma))
+                efforts2.append(effort2 / norm.cdf(bs[i * 2 + a], mu, sigma))
             iler_disparities[i] = max(abs(efforts1[0] - efforts1[1]), abs(efforts2[0] - efforts2[1]))
         return iler_disparities
         
@@ -233,7 +233,7 @@ class populationDynamics_gaussian(object):
             bnds.append((mu0-3*sigma0, mu0+3*sigma0))
             bnds.append((mu1-3*sigma1, mu1+3*sigma1))
         
-        func = lambda x: self.beDisp(data, x, delta)
+        func = lambda x: np.sum(self.beDisp(data, x, delta), dtype=np.float32)
         cons = ({'type': 'ineq', 'fun': lambda x: self.err_thres-self.errorRate(data, truebs, x)})
         res = minimize(func, truebs, method = 'SLSQP', bounds = bnds, constraints = cons)
         return res.x
@@ -246,7 +246,7 @@ class populationDynamics_gaussian(object):
                                         data[i * 2 + 1]['mean'], data[i * 2 + 1]['std']
             bnds.append((mu0-3*sigma0, mu0+3*sigma0))
             bnds.append((mu1-3*sigma1, mu1+3*sigma1))
-        func = lambda x: self.erDisp(data, x, delta)
+        func = lambda x: np.sum(self.erDisp(data, x, delta), dtype=np.float32)
         cons = ({'type': 'ineq', 'fun': lambda x: self.err_thres-self.errorRate(data, truebs, x)})
         res = minimize(func, truebs, method = 'SLSQP', bounds = bnds, constraints = cons)
         return res.x
@@ -259,7 +259,7 @@ class populationDynamics_gaussian(object):
                                         data[i * 2 + 1]['mean'], data[i * 2 + 1]['std']
             bnds.append((mu0-3*sigma0, mu0+3*sigma0))
             bnds.append((mu1-3*sigma1, mu1+3*sigma1))
-        func = lambda x: self.ilerDisp(data, x, delta)
+        func = lambda x: np.sum(self.ilerDisp(data, x, delta), dtype=np.float32)
         cons = ({'type': 'ineq', 'fun': lambda x: self.err_thres-self.errorRate(data, truebs, x)})
         res = minimize(func, truebs, method = 'SLSQP', bounds = bnds, constraints = cons)
         return res.x
@@ -270,39 +270,47 @@ class populationDynamics_gaussian(object):
             for a in range(2):
                 if lazy_pos:
                     mean_efforts[a] = quad(lambda x: norm.pdf(x, data[i * 2 + a]['mean'], data[i * 2 + a]['std']) \
-                                    * self.effort(x, bs[i][a], eps = 1/data[i * 2 + a]['std'] ** .5), -np.inf, np.inf)[0] 
+                                    * self.effort(x, bs[i * 2 + a], eps = 1/data[i * 2 + a]['std'] ** .5), -np.inf, np.inf)[0] 
                     updated_var[a] = quad(lambda x: norm.pdf(x, data[i * 2 + a]['mean'], data[i * 2 + a]['std']) \
-                                    * (x + self.effort(x, bs[i][a], eps = 1/data[i * 2 + a]['std'] ** .5) - data[i * 2 + a]['mean'] - mean_efforts[a]) ** 2, \
+                                    * (x + self.effort(x, bs[i * 2 + a], eps = 1/data[i * 2 + a]['std'] ** .5) - data[i * 2 + a]['mean'] - mean_efforts[a]) ** 2, \
                                     -np.inf, np.inf)[0]
                 else:
                     effort_neg = quad(lambda x: norm.pdf(x, data[i * 2 + a]['mean'], data[i * 2 + a]['std']) \
-                                        * self.effort(x, bs[i][a], eps = 1/data[i * 2 + a]['std'] ** .5), -np.inf, bs[i][a])[0] \
-                                        /norm.cdf(bs[i][a], data[i * 2 + a]['mean'], data[i * 2 + a]['std'])
+                                        * self.effort(x, bs[i * 2 + a], eps = 1/data[i * 2 + a]['std'] ** .5), -np.inf, bs[i][a])[0] \
+                                        /norm.cdf(bs[i * 2 + a], data[i * 2 + a]['mean'], data[i * 2 + a]['std'])
                     effort_pos = effort_neg
                     mean_efforts[a] = effort_neg
                     updated_var[a] = quad(lambda x: norm.pdf(x, data[i * 2 + a]['mean'], data[i * 2 + a]['std']) \
-                                        * (x+self.effort(x, bs[i][a], effort_pos, eps = 1/data[i * 2 + a]['std'] ** .5) - data[i * 2 + a]['mean'] - mean_efforts[a]) ** 2, \
+                                        * (x+self.effort(x, bs[i * 2 + a], effort_pos, eps = 1/data[i * 2 + a]['std'] ** .5) - data[i * 2 + a]['mean'] - mean_efforts[a]) ** 2, \
                                         -np.inf, np.inf)[0]
                 data[i * 2 + a] = {'mean': data[i * 2 + a]['mean'] + mean_efforts[a], 'std': updated_var[a]**.5}
         return data
 
     def selectDelta(self, data, bs, mode = 'median'):
         if mode == 'median':
-            mu0, sigma0, mu1, sigma1 = data[0]['mean'], data[0]['std'], data[1]['mean'], data[1]['std']
-            neg_frac = norm.cdf(bs[0], mu0, sigma0) + norm.cdf(bs[1], mu1, sigma1)
-            func = lambda x: norm.cdf(x, mu0-bs[0], sigma0) + norm.cdf(x, mu1-bs[1], sigma1) / neg_frac - 0.5
+            bnds = []
+            f = []
             cons = ({'type': 'eq', 'fun': func})
-            bnds = [(None, 0)]
+            for i in range(len(data)//2):
+                mu0, sigma0, mu1, sigma1 = data[i * 2]['mean'], data[i * 2]['std'], \
+                                            data[i * 2 + 1]['mean'], data[i * 2 + 1]['std']
+                neg_frac = norm.cdf(bs[i * 2], mu0, sigma0) + norm.cdf(bs[i * 2 + 1], mu1, sigma1)
+                f.append(lambda x: norm.cdf(x, mu0-bs[i * 2], sigma0) + norm.cdf(x, mu1-bs[i * 2 + 1], sigma1) / neg_frac - 0.5)
+                bnds.append(None)
+                bnds.append(0)
+            func = lambda x: np.sum(f(x))
             res = minimize(func, 0, method = 'SLSQP', bounds = bnds, constraints = cons)
             return self.effort(res.x, 0)
             
         elif mode == 'mean':
-            mean_efforts, neg_frac = np.zeros(2), np.zeros(2)
-            for a in range(2):
-                mean_efforts[a] = quad(lambda x: norm.pdf(x, data[a]['mean'], data[a]['std']) \
-                                    * self.effort(x, bs[a], eps = 1/data[a]['std'] ** .5), -np.inf, bs[a])[0] 
-                neg_frac[a] = norm.cdf(bs[a], data[a]['mean'], data[a]['std'])
-            # print((mean_efforts[0] * neg_frac[0] + mean_efforts[1] * neg_frac[1]) / (neg_frac[0] + neg_frac[1]))
+            #needs improvement
+            for i in range(len(data)//2):
+                mean_efforts, neg_frac = np.zeros(2), np.zeros(2)
+                for a in range(2):
+                    mean_efforts[a] = quad(lambda x: norm.pdf(x, data[i * 2 + a]['mean'], data[i * 2 + a]['std']) \
+                                        * self.effort(x, bs[i * 2 + a], eps = 1/data[i * 2 + a]['std'] ** .5), -np.inf, bs[i * 2 + a])[0] 
+                    neg_frac[a] = norm.cdf(bs[i * 2 + a], data[i * 2 + a]['mean'], data[i * 2 + a]['std'])
+                # print((mean_efforts[0] * neg_frac[0] + mean_efforts[1] * neg_frac[1]) / (neg_frac[0] + neg_frac[1]))
             return (mean_efforts[0] * neg_frac[0] + mean_efforts[1] * neg_frac[1]) / (neg_frac[0] + neg_frac[1])
         else:
             raise ValueError("Unexpected delta select mode %s! Supported mode: \"mean\" and \"median\"." % mode)
