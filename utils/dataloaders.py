@@ -119,17 +119,18 @@ class IncomeDataset():
         self.C_max = [24]
 
 class GermanDataset():
-    def __init__(self, device):
+    def __init__(self, device, sensitive_feature_labels: list[str] = ["Age"]):
         self.device = device
+        self.sensitive_feature_labels = sensitive_feature_labels
 
         train_dataset, test_dataset = self.preprocess_german_dataset()
 
-        self.Z_train_ = train_dataset['z']
+        self.Z_train_ = train_dataset[self.sensitive_feature_labels]
         self.Y_train_ = train_dataset['y']
-        self.X_train_ = train_dataset.drop(labels=['z','y'], axis=1)
-        self.Z_test_ = test_dataset['z']
+        self.X_train_ = train_dataset.drop(labels=[*self.sensitive_feature_labels, 'y'], axis=1)
+        self.Z_test_ = test_dataset[self.sensitive_feature_labels]
         self.Y_test_ = test_dataset['y']
-        self.X_test_ = test_dataset.drop(labels=['z','y'], axis=1)
+        self.X_test_ = test_dataset.drop(labels=[*self.sensitive_feature_labels, 'y'], axis=1)
 
         self.prepare_ndarray()
 
@@ -151,36 +152,40 @@ class GermanDataset():
         dataset.columns=['Existing-Account-Status','Month-Duration','Credit-History','Purpose','Credit-Amount','Saving-Account','Present-Employment','Instalment-Rate','Sex','Guarantors','Residence','Property','Age','Installment','Housing','Existing-Credits','Job','Num-People','Telephone','Foreign-Worker','Status']
         dataset.head(5)
 
-        CategoricalFeatures=['Credit-History','Purpose','Present-Employment', 'Sex','Guarantors','Property','Installment','Telephone','Foreign-Worker','Existing-Account-Status','Saving-Account','Housing','Job']
-
+        CategoricalFeatures=['Credit-History','Purpose','Present-Employment','Guarantors','Property','Installment','Telephone','Foreign-Worker','Existing-Account-Status','Saving-Account','Housing','Job']
         NumericalFeatures =['Month-Duration','Credit-Amount']
 
-        data_encode=dataset.copy()
+        data_encode = dataset.copy()
+        
+        if "Age" in self.sensitive_feature_labels:
+            data_encode['Age'] = (data_encode["Age"] > 30).astype(int)
+
+        if "Sex" in self.sensitive_feature_labels:
+            # A91 : male   : divorced/separated
+	        # A92 : female : divorced/separated/married
+            # A93 : male   : single
+	        # A94 : male   : married/widowed
+	        # A95 : female : single
+            sex_mapping = {'A91': 1, 'A92': 0, 'A93': 1, 'A94': 1, 'A95': 0}
+            data_encode['Sex'] = data_encode["Sex"].map(sex_mapping).astype(int)
+        else:
+            CategoricalFeatures.append("Sex")
+
         label_encoder = LabelEncoder()
         for x in CategoricalFeatures:
-            data_encode[x]=label_encoder.fit_transform(data_encode[x])
+            data_encode[x] = label_encoder.fit_transform(data_encode[x])
             data_encode[x].unique()
-        data_encode.head(5)
 
-        data_encode.loc[data_encode['Age']<=30,'Age'] = 0
-        data_encode.loc[data_encode['Age']>30,'Age'] = 1
-
-
-        data_encode=data_encode.rename(columns = {'Age':'z'})
-
-        data_encode
-
-        data_encode.loc[data_encode['Status']==2,'Status'] = 0
+        data_encode.loc[data_encode['Status'] == 2,'Status'] = 0
         data_encode=data_encode.rename(columns = {'Status':'y'})
-        data_encode
-
-        scaler = StandardScaler()
 
         train_dataset = data_encode[:800].copy()
-        train_dataset[NumericalFeatures] = scaler.fit_transform(train_dataset[NumericalFeatures])
         test_dataset = data_encode[800:].copy()
+
+        scaler = StandardScaler()
+        train_dataset[NumericalFeatures] = scaler.fit_transform(train_dataset[NumericalFeatures])
         test_dataset[NumericalFeatures] = scaler.transform(test_dataset[NumericalFeatures])
-        
+
         return train_dataset, test_dataset
         
 
@@ -188,15 +193,14 @@ class GermanDataset():
         self.X_train = self.X_train_.to_numpy(dtype=np.float64)
         self.Y_train = self.Y_train_.to_numpy(dtype=np.float64)
         self.Z_train = self.Z_train_.to_numpy(dtype=np.float64)
-        self.XZ_train = np.concatenate([self.X_train, self.Z_train.reshape(-1,1)], axis=1)
+        self.XZ_train = np.concatenate([self.X_train, self.Z_train.reshape(-1, len(self.sensitive_feature_labels))], axis=1)
 
         self.X_test = self.X_test_.to_numpy(dtype=np.float64)
         self.Y_test = self.Y_test_.to_numpy(dtype=np.float64)
         self.Z_test = self.Z_test_.to_numpy(dtype=np.float64)
-        self.XZ_test = np.concatenate([self.X_test, self.Z_test.reshape(-1,1)], axis=1)
+        self.XZ_test = np.concatenate([self.X_test, self.Z_test.reshape(-1, len(self.sensitive_feature_labels))], axis=1)
         
-        self.sensitive_attrs = sorted(list(set(self.Z_train)))
-        return None
+        self.sensitive_attrs = [list(np.unique(col).astype(int)) for col in self.Z_train.T]
 
     def get_dataset_in_ndarray(self):
         return (self.X_train, self.Y_train, self.Z_train, self.XZ_train),\
@@ -234,22 +238,44 @@ class SyntheticDataset():
 
         self.set_improvable_features()
 
-    def createData(self, train_samples=16000, test_samples=4000, z1_mean=0.3, z2_mean=0.5):
-    
+    def createData(self, 
+                   train_samples=16000, 
+                   test_samples=4000, 
+                   z1_mean=0.3, 
+                   z2_mean=0.5,
+                   distribution="normal",
+                   params: dict = None
+                   ) -> tuple[np.ndarray, np.ndarray]:
         num_samples = train_samples + test_samples
-        
         xs, ys, zs = [], [], []
 
-        x_dist = {(1,1): {'mean': (0.4,0.3), 'cov': np.array([[0.1,0.0], [0.0,0.1]])},
-              (1,0): {'mean': (0.1,0.4), 'cov': np.array([[0.2,0.0], [0.0,0.2]])},
-              (0,0):  {'mean':(-0.1,-0.2), 'cov': np.array([[0.4,0.0], [0.0,0.4]])},
-              (0,1): {'mean': (-0.2,-0.3), 'cov': np.array([[0.2,0.0], [0.0,0.2]])}}
         y_means = [z1_mean, z2_mean]
         np.random.seed(0)
         for i in range(num_samples):
             z = np.random.binomial(n = 1, p = 0.4, size = 1)[0]
             y = np.random.binomial(n = 1, p = y_means[z], size = 1)[0]
-            x = np.random.multivariate_normal(mean = x_dist[(y,z)]['mean'], cov = x_dist[(y,z)]['cov'], size = 1)[0]
+
+            if distribution == "exponential":
+                x = np.array([
+                  np.random.exponential(scale=params["exp"]["scale_1"], size=1),
+                  np.random.exponential(scale=params["exp"]["scale_2"], size=1),  
+                ])
+            if distribution == "poisson":
+                x = np.array([
+                    np.random.poisson(lam=params["poisson"]["lambda_1"], size=1),
+                    np.random.poisson(lam=params["poisson"]["lambda_2"], size=1)
+                ])
+            else: #distribution == "normal":
+                x_dist = {
+                    (1,1): {'mean': (0.4,0.3), 'cov': np.array([[0.1,0.0], [0.0,0.1]])},
+                    (1,0): {'mean': (0.1,0.4), 'cov': np.array([[0.2,0.0], [0.0,0.2]])},
+                    (0,0):  {'mean':(-0.1,-0.2), 'cov': np.array([[0.4,0.0], [0.0,0.4]])},
+                    (0,1): {'mean': (-0.2,-0.3), 'cov': np.array([[0.2,0.0], [0.0,0.2]])}
+                    }
+                x = np.random.multivariate_normal(mean = x_dist[(y,z)]['mean'], cov = x_dist[(y,z)]['cov'], size = 1)[0]
+                # x = np.random.multivariate_normal(mean = x_dist[(y,z)]['mean'], cov = x_dist[(y,z)]['cov'], size = 1)[0]
+                
+
             xs.append(x)
             ys.append(y)
             zs.append(z)
@@ -273,9 +299,8 @@ class SyntheticDataset():
         self.Y_test = self.Y_test_.to_numpy(dtype=np.float64)
         self.Z_test = self.Z_test_.to_numpy(dtype=np.float64)
         self.XZ_test = np.concatenate([self.X_test, self.Z_test.reshape(-1,1)], axis=1)
-        
-        self.sensitive_attrs = sorted(list(set(self.Z_train)))
-        return None
+
+        self.sensitive_attrs = [list(np.unique(col).astype(int)) for col in self.Z_train.T]
 
     def get_dataset_in_ndarray(self):
         return (self.X_train, self.Y_train, self.Z_train, self.XZ_train),\
