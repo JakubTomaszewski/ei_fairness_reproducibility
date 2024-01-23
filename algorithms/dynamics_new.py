@@ -335,18 +335,32 @@ class populationDynamics_gaussian(object):
         return titles
     
     def plot(self, data, truebs, bs = None, title = None):
-        fig, ax = plt.subplots(nrows = len(data)//2, ncols = 2, sharey = True, sharex = True, gridspec_kw={'hspace': 0.5})
-        labels = self.dataPrint(data)
-        for i in range(len(data)//2):
-            for a in range(2):
-                mu, sigma = data[i * 2 + a]['mean'], data[i * 2 + a]['std']
-                x = np.linspace(mu - 3*sigma, mu + 3*sigma, 100)
-                ax[i][a].plot(x, norm.pdf(x, mu, sigma))
-                ax[i][a].set_xlabel(labels[i * 2 + a], fontsize = 18)
-                ymin, ymax = ax[i][a].get_ylim()
-                ax[i][a].vlines(x = truebs[i * 2 + a], color = 'g', linestyle='-.', ymin = ymin, ymax = ymax)
-                if not bs is None: ax[i][a].vlines(x = bs[i * 2 + a], color = 'm', linestyle = '-', ymin = ymin, ymax = ymax)
-            plt.suptitle(title)
+            if len(data)//2 == 1:
+                fig, ax = plt.subplots(nrows = len(data)//2, ncols = 2, sharey = True, sharex = True, gridspec_kw={'hspace': 0.5})
+                labels = self.dataPrint(data)
+                for i in range(len(data)//2):
+                    for a in range(2):
+                        mu, sigma = data[i * 2 + a]['mean'], data[i * 2 + a]['std']
+                        x = np.linspace(mu - 3*sigma, mu + 3*sigma, 100)
+                        ax[i * 2 + a].plot(x, norm.pdf(x, mu, sigma))
+                        ax[i * 2 + a].set_xlabel(labels[i * 2 + a], fontsize = 18)
+                        ymin, ymax = ax[i * 2 + a].get_ylim()
+                        ax[i * 2 + a].vlines(x = truebs[i * 2 + a], color = 'g', linestyle='-.', ymin = ymin, ymax = ymax)
+                        if not bs is None: ax[i * 2 + a].vlines(x = bs[i * 2 + a], color = 'm', linestyle = '-', ymin = ymin, ymax = ymax)
+                    plt.suptitle(title)
+            else:
+                fig, ax = plt.subplots(nrows = len(data)//2, ncols = 2, sharey = True, sharex = True, gridspec_kw={'hspace': 0.5})
+                labels = self.dataPrint(data)
+                for i in range(len(data)//2):
+                    for a in range(2):
+                        mu, sigma = data[i * 2 + a]['mean'], data[i * 2 + a]['std']
+                        x = np.linspace(mu - 3*sigma, mu + 3*sigma, 100)
+                        ax[i][a].plot(x, norm.pdf(x, mu, sigma))
+                        ax[i][a].set_xlabel(labels[i * 2 + a], fontsize = 18)
+                        ymin, ymax = ax[i][a].get_ylim()
+                        ax[i][a].vlines(x = truebs[i * 2 + a], color = 'g', linestyle='-.', ymin = ymin, ymax = ymax)
+                        if not bs is None: ax[i][a].vlines(x = bs[i * 2 + a], color = 'm', linestyle = '-', ymin = ymin, ymax = ymax)
+                    plt.suptitle(title)
 
     def run(self, mode = 'true', n_iter = 20, delta = 0.5, c = 0, thres = .001, select_delta = False, plot = True):
         if mode == 'true':
