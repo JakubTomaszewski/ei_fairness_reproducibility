@@ -166,7 +166,7 @@ class GermanDataset():
             # A93 : male   : single
 	        # A94 : male   : married/widowed
 	        # A95 : female : single
-            sex_mapping = {'A91': 1, 'A92': 0, 'A93': 1, 'A94': 1, 'A95': 0}
+            sex_mapping = {'A91': 0, 'A92': 1, 'A93': 0, 'A94': 0, 'A95': 1}
             data_encode['Sex'] = data_encode["Sex"].map(sex_mapping).astype(int)
         else:
             CategoricalFeatures.append("Sex")
