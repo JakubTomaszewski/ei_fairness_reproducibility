@@ -89,12 +89,14 @@ class populationDynamics_gaussian(object):
     def WassersteinDistance(self, data):
         #returns a distance for every sensitive feature 
         ws_distance = np.zeros(len(data)//2)
+        #ws_distance = 0
         for i in range(len(data)//2):
         # https://djalil.chafai.net/blog/2010/04/30/wasserstein-distance-between-two-gaussians/
             mu0, sigma0, mu1, sigma1 = data[i * 2]['mean'], data[i * 2]['std'], \
                                         data[i * 2 + 1]['mean'], data[i * 2 + 1]['std']
             ws_distance[i] = (mu0 - mu1)**2 + (sigma0 - sigma1)**2
-        return ws_distance
+            #ws_distance = (mu0 - mu1)**2 + (sigma0 - sigma1)**2
+        return np.mean(ws_distance)
     
     def distance(self, data):
         distances = np.zeros(len(data)//2)
@@ -102,7 +104,7 @@ class populationDynamics_gaussian(object):
             mu0, sigma0, mu1, sigma1 = data[i * 2]['mean'], data[i * 2]['std'], \
                                         data[i * 2 + 1]['mean'], data[i * 2 + 1]['std']
             distances[i] = quad(lambda x: abs(norm.pdf(x, mu0, sigma0) - norm.pdf(x, mu1, sigma1)), -np.inf, np.inf)[0]/2
-        return distances
+        return np.mean(distances)
 
     def errorRate(self, data, truebs, bs):
         error_rate = 0
@@ -116,7 +118,6 @@ class populationDynamics_gaussian(object):
         return error_rate
         
     def trueBoundary(self, data, thres = 1e-3):
-        #can be improved later by returning an arr instead of arr of arr (check)
         tb = np.zeros(len(data))
         for i in range(len(data)//2):  
             if self.frac:
@@ -138,50 +139,57 @@ class populationDynamics_gaussian(object):
         return tb
         
     def dpDisp(self, data, bs, is_abs = True):
-        #returns an array of disparities(1 for each sens feature)
-        dp_disparities = np.zeros(len(data)//2)
+        dp_sum = 0
+        #dp_disparities = np.zeros(len(data)//2)
         for i in range(len(data)//2): 
             pos = []
             for a in range(2):
                 mu, sigma = data[i * 2 + a]['mean'], data[i * 2 + a]['std']
                 pos.append(1-norm.cdf(bs[i * 2 + a], mu, sigma))
-            dp_disparities[i] = abs(pos[1] - pos[0]) if is_abs else pos[1] - pos[0]
-        return dp_disparities
+            #dp_disparities[i] = abs(pos[1] - pos[0]) if is_abs else pos[1] - pos[0]
+            dp_sum += abs(pos[1] - pos[0]) if is_abs else pos[1] - pos[0]
+        return dp_sum
         
     def efDisp(self, data, bs, delta, is_abs = True):
-        #returns an array of disparities(1 for each sens feature)
-        ef_disparities = np.zeros(len(data)//2)
+        ef_sum = 0
+        #ef_disparities = np.zeros(len(data)//2)
         for i in range(len(data)//2): 
             pos = []
             for a in range(2):
                 mu, sigma = data[i *2 + a]['mean'], data[i * 2 + a]['std']
                 pos.append((norm.cdf(bs[i * 2 + a], mu + delta, sigma)-norm.cdf(bs[i * 2 + a], mu, sigma)) / norm.cdf(bs[i * 2 + a], mu, sigma))
-            ef_disparities[i] = abs(pos[1] - pos[0]) if is_abs else pos[1] - pos[0]
-        return ef_disparities
+            #ef_disparities[i] = abs(pos[1] - pos[0]) if is_abs else pos[1] - pos[0]
+            ef_sum += abs(pos[1] - pos[0]) if is_abs else pos[1] - pos[0]
+        return ef_sum
 
     def beDisp(self, data, bs, delta, is_abs = True):
-        be_disparities = np.zeros(len(data)//2)
+        #be_disparities = np.zeros(len(data)//2)
+        be_sum = 0
         for i in range(len(data)//2): 
             pos = []
             for a in range(2):
                 mu, sigma = data[i * 2 + a]['mean'], data[i * 2 + a]['std']
                 pos.append(norm.cdf(bs[i * 2 + a], mu + delta, sigma)-norm.cdf(bs[i * 2 + a], mu, sigma))
-            be_disparities[i] = abs(pos[1] - pos[0]) if is_abs else pos[1] - pos[0]
-        return be_disparities
+            be_sum += abs(pos[1] - pos[0]) if is_abs else pos[1] - pos[0]
+            #be_disparities[i] = abs(pos[1] - pos[0]) if is_abs else pos[1] - pos[0]
+        return be_sum
     
     def erDisp(self, data, bs, delta, is_abs = True):
-        er_disparities = np.zeros(len(data)//2)
+        er_sum = 0
+        #er_disparities = np.zeros(len(data)//2)
         for i in range(len(data)//2): 
             efforts = []
             for a in range(2):
                 mu, sigma = data[i * 2 + a]['mean'], data[i * 2 + a]['std']
                 effort = quad(lambda x: (bs[i * 2 + a]-x) * norm.pdf(x, mu, sigma), -np.inf, bs[i * 2 + a])[0]
                 efforts.append(effort / norm.cdf(bs[i * 2 + a], mu, sigma))
-            er_disparities[i] = abs(efforts[0] - efforts[1]) if is_abs else efforts[1] - efforts[0]
-        return er_disparities
+            #er_disparities[i] = abs(efforts[0] - efforts[1]) if is_abs else efforts[1] - efforts[0]
+            er_sum += abs(efforts[0] - efforts[1]) if is_abs else efforts[1] - efforts[0]
+        return er_sum
     
     def ilerDisp(self, data, bs, delta, is_abs = True):
-        iler_disparities = np.zeros(len(data)//2)
+        iler_sum = 0
+        #iler_disparities = np.zeros(len(data)//2)
         for i in range(len(data)//2): 
             efforts1, efforts2 = [], []
             u0 = (bs[i * 2] - data[i * 2]['mean'])/data[i * 2 ]['std']
@@ -193,8 +201,9 @@ class populationDynamics_gaussian(object):
                 effort2 = bs[i * 2 + a] - (data[i * 2 + a]['mean'] - u*data[i * 2 + a]['std'])/data[i * 2 + a]['std']
                 efforts1.append(effort1 / norm.cdf(bs[i * 2 + a], mu, sigma))
                 efforts2.append(effort2 / norm.cdf(bs[i * 2 + a], mu, sigma))
-            iler_disparities[i] = max(abs(efforts1[0] - efforts1[1]), abs(efforts2[0] - efforts2[1]))
-        return iler_disparities
+            iler_sum += max(abs(efforts1[0] - efforts1[1]), abs(efforts2[0] - efforts2[1]))
+            #iler_disparities[i] = max(abs(efforts1[0] - efforts1[1]), abs(efforts2[0] - efforts2[1]))
+        return iler_sum
         
     def DPBoundary(self, data, truebs, c = 0, thres = 1e-3):
         #check the bounds, sum and input data
@@ -206,7 +215,7 @@ class populationDynamics_gaussian(object):
             # cons = ({'type': 'ineq', 'fun': lambda x: c-self.dpDisp(data, x)})
             bnds.append((mu0-3*sigma0, mu0+3*sigma0))
             bnds.append((mu1-3*sigma1, mu1+3*sigma1))
-        func = lambda x: np.sum(self.dpDisp(data, x), dtype=np.float32)
+        func = lambda x: self.dpDisp(data, x)
         cons = ({'type': 'ineq', 'fun': lambda x: self.err_thres-self.errorRate(data, truebs, x)})
         res = minimize(func, truebs, method = 'SLSQP', bounds = bnds, constraints = cons)
         return res.x 
@@ -219,7 +228,7 @@ class populationDynamics_gaussian(object):
                                         data[i * 2 + 1]['mean'], data[i * 2 + 1]['std']
             bnds.append((mu0-3*sigma0, mu0+3*sigma0))
             bnds.append((mu1-3*sigma1, mu1+3*sigma1))
-        func = lambda x: np.sum(self.efDisp(data, x, delta), dtype=np.float32)
+        func = lambda x: self.efDisp(data, x, delta)
         cons = ({'type': 'ineq', 'fun': lambda x: self.err_thres-self.errorRate(data, truebs, x)})
         res = minimize(func, truebs, method = 'SLSQP', bounds = bnds, constraints = cons)
         return res.x
@@ -233,7 +242,8 @@ class populationDynamics_gaussian(object):
             bnds.append((mu0-3*sigma0, mu0+3*sigma0))
             bnds.append((mu1-3*sigma1, mu1+3*sigma1))
         
-        func = lambda x: np.sum(self.beDisp(data, x, delta), dtype=np.float32)
+        #func = lambda x: np.sum(self.beDisp(data, x, delta), dtype=np.float64)
+        func = lambda x: self.beDisp(data, x, delta)
         cons = ({'type': 'ineq', 'fun': lambda x: self.err_thres-self.errorRate(data, truebs, x)})
         res = minimize(func, truebs, method = 'SLSQP', bounds = bnds, constraints = cons)
         return res.x
@@ -246,7 +256,7 @@ class populationDynamics_gaussian(object):
                                         data[i * 2 + 1]['mean'], data[i * 2 + 1]['std']
             bnds.append((mu0-3*sigma0, mu0+3*sigma0))
             bnds.append((mu1-3*sigma1, mu1+3*sigma1))
-        func = lambda x: np.sum(self.erDisp(data, x, delta), dtype=np.float32)
+        func = lambda x: self.erDisp(data, x, delta)
         cons = ({'type': 'ineq', 'fun': lambda x: self.err_thres-self.errorRate(data, truebs, x)})
         res = minimize(func, truebs, method = 'SLSQP', bounds = bnds, constraints = cons)
         return res.x
@@ -259,7 +269,7 @@ class populationDynamics_gaussian(object):
                                         data[i * 2 + 1]['mean'], data[i * 2 + 1]['std']
             bnds.append((mu0-3*sigma0, mu0+3*sigma0))
             bnds.append((mu1-3*sigma1, mu1+3*sigma1))
-        func = lambda x: np.sum(self.ilerDisp(data, x, delta), dtype=np.float32)
+        func = lambda x: self.ilerDisp(data, x, delta)
         cons = ({'type': 'ineq', 'fun': lambda x: self.err_thres-self.errorRate(data, truebs, x)})
         res = minimize(func, truebs, method = 'SLSQP', bounds = bnds, constraints = cons)
         return res.x
@@ -276,7 +286,7 @@ class populationDynamics_gaussian(object):
                                     -np.inf, np.inf)[0]
                 else:
                     effort_neg = quad(lambda x: norm.pdf(x, data[i * 2 + a]['mean'], data[i * 2 + a]['std']) \
-                                        * self.effort(x, bs[i * 2 + a], eps = 1/data[i * 2 + a]['std'] ** .5), -np.inf, bs[i][a])[0] \
+                                        * self.effort(x, bs[i * 2 + a], eps = 1/data[i * 2 + a]['std'] ** .5), -np.inf, bs[i * 2 + a])[0] \
                                         /norm.cdf(bs[i * 2 + a], data[i * 2 + a]['mean'], data[i * 2 + a]['std'])
                     effort_pos = effort_neg
                     mean_efforts[a] = effort_neg
@@ -318,30 +328,32 @@ class populationDynamics_gaussian(object):
     def dataPrint(self, data):
         titles = []
         for i in range(len(data)//2):
-            mu0, sigma0, mu1, sigma1 = data[i* 2]['mean'], data[i * 2 + 1]['std'],\
+            mu0, sigma0, mu1, sigma1 = data[i * 2]['mean'], data[i * 2]['std'],\
                                          data[i* 2 + 1]['mean'], data[i* 2 + 1]['std']
             titles.append(r'$\mu^{(0)}=$%.1f, $\sigma^{(0)}=$%.1f' % (mu0, sigma0))
             titles.append(r'$\mu^{(1)}=$%.1f, $\sigma^{(1)}=$%.1f' % (mu1, sigma1))
         return titles
     
     def plot(self, data, truebs, bs = None, title = None):
-        fig, ax = plt.subplots(nrows = len(data)//2, ncols = 2, sharey = True, sharex = True)
+        fig, ax = plt.subplots(nrows = len(data)//2, ncols = 2, sharey = True, sharex = True, gridspec_kw={'hspace': 0.5})
         labels = self.dataPrint(data)
         for i in range(len(data)//2):
             for a in range(2):
                 mu, sigma = data[i * 2 + a]['mean'], data[i * 2 + a]['std']
                 x = np.linspace(mu - 3*sigma, mu + 3*sigma, 100)
-                ax[i * 2 + a].plot(x, norm.pdf(x, mu, sigma))
-                ax[i * 2 + a].set_xlabel(labels[i * 2 + a], fontsize = 18)
-                ymin, ymax = ax[i * 2 + a].get_ylim()
-                ax[i * 2 + a].vlines(x = truebs[i * 2 + a], color = 'g', linestyle='-.', ymin = ymin, ymax = ymax)
-                if not bs is None: ax[i * 2 + a].vlines(x = bs[i * 2 + a], color = 'm', linestyle = '-', ymin = ymin, ymax = ymax)
-            plt.title(title)
+                ax[i][a].plot(x, norm.pdf(x, mu, sigma))
+                ax[i][a].set_xlabel(labels[i * 2 + a], fontsize = 18)
+                ymin, ymax = ax[i][a].get_ylim()
+                ax[i][a].vlines(x = truebs[i * 2 + a], color = 'g', linestyle='-.', ymin = ymin, ymax = ymax)
+                if not bs is None: ax[i][a].vlines(x = bs[i * 2 + a], color = 'm', linestyle = '-', ymin = ymin, ymax = ymax)
+            plt.suptitle(title)
 
     def run(self, mode = 'true', n_iter = 20, delta = 0.5, c = 0, thres = .001, select_delta = False, plot = True):
         if mode == 'true':
             data = copy.deepcopy(self.init_data)
-            disp, wd, cdp, cef = np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1)
+            disp, wd, er, cdp, cef = np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1)
+            #num_sens_feature = len(self.init_data)//2
+            #disp, wd, cdp, cef = np.zeros((n_iter + 1, num_sens_feature)), np.zeros((n_iter + 1, num_sens_feature)), np.zeros((n_iter + 1, num_sens_feature)), np.zeros((n_iter + 1, num_sens_feature))
             for i in range(n_iter+1):
                 truebs = self.trueBoundary(data, thres)
                 disp[i], wd[i], cdp[i], cef[i] = self.dpDisp(data, truebs), self.distance(data), self.dpDisp(data, truebs), self.efDisp(data, truebs, delta)
