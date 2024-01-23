@@ -48,8 +48,7 @@ class IncomeDataset():
         ca_features, ca_labels, _ = ACSIncome.df_to_pandas(ca_data)
 
         # Sex
-        if "SEX" in self.sensitive_feature_labels:
-            ca_features['SEX'] = ca_features['SEX'].map({2.0: 1, 1.0: 0}).astype(int)
+        ca_features['SEX'] = ca_features['SEX'].map({2.0: 1, 1.0: 0}).astype(int)
 
         # Age
         if "AGEP" in self.sensitive_feature_labels:
@@ -362,8 +361,7 @@ class CompasDataset():
         
         df = df[columns]
 
-        if "sex" in self.sensitive_feature_labels:
-            df['sex'] = df['sex'].map({"Male": 1, "Female": 0}).astype(int)
+        df['sex'] = df['sex'].map({"Male": 0, "Female": 1}).astype(int)
 
         if "age" in self.sensitive_feature_labels:
             df['age'] = (df["age"] > 30).astype(int)
@@ -385,7 +383,6 @@ class CompasDataset():
 
         return train_dataset, test_dataset
   
-
     def prepare_ndarray(self):
         self.X_train = self.X_train_.to_numpy(dtype=np.float64)
         self.Y_train = self.Y_train_.to_numpy(dtype=np.float64)
@@ -417,3 +414,103 @@ class CompasDataset():
         self.C_index = [2, 3, 4, 5, 6] # Improvable features
         self.C_min = [0, 0, 0, 0, 1] # Min values for improvable features
         self.C_max = [20, 13, 9, 38, 10] # Max values for improvable features
+
+
+class CreditCardClientsDataset():
+    def __init__(self, 
+                 device,
+                 sensitive_feature_labels: list[str] = ["SEX"]
+                 ) -> None:
+        self.device = device
+        self.sensitive_feature_labels = sensitive_feature_labels
+
+        train_dataset, test_dataset = self.preprocess_income_dataset()
+
+        self.Z_train_ = train_dataset[self.sensitive_feature_labels]
+        self.Y_train_ = train_dataset['y']
+        self.X_train_ = train_dataset.drop(labels=[*self.sensitive_feature_labels, 'y'], axis=1)
+        self.Z_test_ = test_dataset[self.sensitive_feature_labels]
+        self.Y_test_ = test_dataset['y']
+        self.X_test_ = test_dataset.drop(labels=[*self.sensitive_feature_labels, 'y'], axis=1)
+
+        self.prepare_ndarray()
+        self.set_improvable_features()
+
+    def preprocess_income_dataset(self):
+        '''
+        Function to load and preprocess Income dataset
+
+        Return
+        ------
+        train_dataset : dataframe
+            train dataset
+        test_dataset : dataframe
+            test dataset
+        '''
+        if not os.path.exists('../data/default_of_credit_card_clients.csv'):
+            os.system('wget https://raw.githubusercontent.com/MatteoM95/Default-of-Credit-Card-Clients-Dataset-Analisys/main/dataset/default_of_credit_card_clients.csv -P ../data')
+
+        df = pd.read_csv('../data/default_of_credit_card_clients.csv')
+        numeric_features = ["LIMIT_BAL", "BILL_AMT1", "BILL_AMT2", "BILL_AMT3", "BILL_AMT4", "BILL_AMT5", "BILL_AMT6", "PAY_AMT1", "PAY_AMT2", "PAY_AMT3", "PAY_AMT4", "PAY_AMT5", "PAY_AMT6"]
+        categorical_features = ["MARRIAGE", "PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6"]
+        label_column = "default payment next month"
+
+        df = df.drop(columns=["ID"])
+
+        df = df[df["EDUCATION"].isin([1, 2, 3])]
+        df["EDUCATION"] = df["EDUCATION"] - 1
+        df['SEX'] = df['SEX'].map({1: 0, 2: 1}).astype(int)
+
+        if "AGE" in self.sensitive_feature_labels:
+            df['AGE'] = (df["AGE"] > 30).astype(int)
+
+        df = pd.get_dummies(df, columns=categorical_features, drop_first=True)
+        df.rename(columns = {label_column:'y'}, inplace=True)
+        y = df['y']
+        df = df.drop(columns=['y'])
+        df.insert(len(df.columns), column='y', value=y)
+
+        train_dataset, test_dataset = train_test_split(df, test_size=0.2)
+        train_dataset = train_dataset.reset_index(drop=True)
+        test_dataset = test_dataset.reset_index(drop=True)
+
+        if "AGE" not in self.sensitive_feature_labels:
+            numeric_features.append("AGE")
+
+        scaler = StandardScaler()
+        train_dataset[numeric_features] = scaler.fit_transform(train_dataset[numeric_features])
+        test_dataset[numeric_features] = scaler.transform(test_dataset[numeric_features])
+
+        return train_dataset, test_dataset
+  
+    def prepare_ndarray(self):
+        self.X_train = self.X_train_.to_numpy(dtype=np.float64)
+        self.Y_train = self.Y_train_.to_numpy(dtype=np.float64)
+        self.Z_train = self.Z_train_.to_numpy(dtype=np.float64)
+        
+        self.XZ_train = np.concatenate([self.X_train, self.Z_train.reshape(-1, len(self.sensitive_feature_labels))], axis=1)
+
+        self.X_test = self.X_test_.to_numpy(dtype=np.float64)
+        self.Y_test = self.Y_test_.to_numpy(dtype=np.float64)
+        self.Z_test = self.Z_test_.to_numpy(dtype=np.float64)
+        self.XZ_test = np.concatenate([self.X_test, self.Z_test.reshape(-1, len(self.sensitive_feature_labels))], axis=1)
+        
+        self.sensitive_attrs = [list(np.unique(col).astype(int)) for col in self.Z_train.T]
+
+    def get_dataset_in_ndarray(self):
+        return (self.X_train, self.Y_train, self.Z_train, self.XZ_train),\
+               (self.X_test, self.Y_test, self.Z_test, self.XZ_test)
+
+    def get_dataset_in_tensor(self, validation=False, val_portion=.0):
+        X_train_, Y_train_, Z_train_, XZ_train_ = arrays_to_tensor(
+            self.X_train, self.Y_train, self.Z_train, self.XZ_train, self.device)
+        X_test_, Y_test_, Z_test_, XZ_test_ = arrays_to_tensor(
+            self.X_test, self.Y_test, self.Z_test, self.XZ_test, self.device)
+        return (X_train_, Y_train_, Z_train_, XZ_train_),\
+               (X_test_, Y_test_, Z_test_, XZ_test_) 
+
+    def set_improvable_features(self):
+        self.U_index = np.setdiff1d(np.arange(self.X_train.shape[1]), [2])  # Non-improvable features
+        self.C_index = [2] # Improvable features
+        self.C_min = [0] # Min values for improvable features
+        self.C_max = [2] # Max values for improvable features
