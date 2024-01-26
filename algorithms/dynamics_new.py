@@ -48,8 +48,10 @@ def drawTrajectory(dfs, y = 'disp', df_labels = ['ERM', 'DP', 'EI', 'BE', 'ER'],
     plt.xlabel("Iteration")
     if y == 'disp':
         ylabel = 'Underlying DP Disp'
-    elif y == 'wd':
-        ylabel = "Distance"
+    elif y == 'wd_0':
+        ylabel = "Distance z1"
+    elif y == 'wd_1':
+        ylabel = "Distance z2"
     elif y == 'er':
         ylabel = "Error Rate"
     elif y == 'cdp':
@@ -104,7 +106,7 @@ class populationDynamics_gaussian(object):
             mu0, sigma0, mu1, sigma1 = data[i * 2]['mean'], data[i * 2]['std'], \
                                         data[i * 2 + 1]['mean'], data[i * 2 + 1]['std']
             distances[i] = quad(lambda x: abs(norm.pdf(x, mu0, sigma0) - norm.pdf(x, mu1, sigma1)), -np.inf, np.inf)[0]/2
-        return np.mean(distances)
+        return distances
 
     def errorRate(self, data, truebs, bs):
         error_rate = 0
@@ -365,86 +367,86 @@ class populationDynamics_gaussian(object):
     def run(self, mode = 'true', n_iter = 20, delta = 0.5, c = 0, thres = .001, select_delta = False, plot = True):
         if mode == 'true':
             data = copy.deepcopy(self.init_data)
-            disp, wd, er, cdp, cef = np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1)
+            disp, wd_0, wd_1, er, cdp, cef = np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1)
             #num_sens_feature = len(self.init_data)//2
             #disp, wd, cdp, cef = np.zeros((n_iter + 1, num_sens_feature)), np.zeros((n_iter + 1, num_sens_feature)), np.zeros((n_iter + 1, num_sens_feature)), np.zeros((n_iter + 1, num_sens_feature))
             for i in range(n_iter+1):
                 truebs = self.trueBoundary(data, thres)
-                disp[i], wd[i], cdp[i], cef[i] = self.dpDisp(data, truebs), self.distance(data), self.dpDisp(data, truebs), self.efDisp(data, truebs, delta)
-                text = 'Iteration %d: Underlying DP Disp: %.3f, Classification DP Disp: %.3f, Classification EF Disp: %.3f, Wasserstein Distance: %.3f' % (
-                        i, disp[i], cdp[i], cef[i], wd[i])
+                disp[i], wd_0[i], wd_1[i], cdp[i], cef[i] = self.dpDisp(data, truebs), self.distance(data)[0], self.distance(data)[1], self.dpDisp(data, truebs), self.efDisp(data, truebs, delta)
+                text = 'Iteration %d: Underlying DP Disp: %.3f, Classification DP Disp: %.3f, Classification EF Disp: %.3f, Wasserstein Distance z1: %.3f, Wasserstein Distance z2: %.3f' % (
+                        i, disp[i], cdp[i], cef[i], wd_0[i], wd_1[i])
                 if plot: self.plot(data, truebs, title = text)
                 data = self.update(data, truebs)
-            return pd.DataFrame({'disp':disp, 'wd':wd, 'cdp': cdp, 'cef': cef})
+            return pd.DataFrame({'disp':disp, 'wd_0':wd_0, 'wd_1':wd_1, 'cdp': cdp, 'cef': cef})
                 
         elif mode == 'dp':
             data = copy.deepcopy(self.init_data)
-            disp, wd, er, cdp, cef = np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1)
+            disp, wd_0, wd_1, er, cdp, cef = np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1)
             for i in range(n_iter+1):
                 truebs = self.trueBoundary(data, thres)
                 bs = self.DPBoundary(data, truebs, c, thres)
-                disp[i], wd[i], er[i], cdp[i], cef[i] = self.dpDisp(data, truebs), self.distance(data), self.errorRate(data, truebs, bs), self.dpDisp(data, bs), self.efDisp(data, bs, delta)
-                text = 'Iteration %d: Underlying DP Disp: %.3f, Classification DP Disp: %.3f, Classification EF Disp: %.3f, Wasserstein Distance: %.3f, Error Rate: %.3f' % (
-                        i, disp[i], cdp[i], cef[i] , wd[i], er[i])
+                disp[i], wd_0[i], wd_1[i], er[i], cdp[i], cef[i] = self.dpDisp(data, truebs), self.distance(data)[0], self.distance(data)[1], self.errorRate(data, truebs, bs), self.dpDisp(data, bs), self.efDisp(data, bs, delta)
+                text = 'Iteration %d: Underlying DP Disp: %.3f, Classification DP Disp: %.3f, Classification EF Disp: %.3f, Wasserstein Distance z1: %.3f, Wasserstein Distance z2: %.3f Error Rate: %.3f' % (
+                        i, disp[i], cdp[i], cef[i] , wd_0[i], wd_1[i], er[i])
                 if plot: self.plot(data, truebs, bs, title = text)
                 data = self.update(data, bs)
-            return pd.DataFrame({'disp':disp, 'wd':wd, 'er':er, 'cdp':cdp, 'cef':cef})
+            return pd.DataFrame({'disp':disp, 'wd_0':wd_0, 'wd_1':wd_1, 'er':er, 'cdp':cdp, 'cef':cef})
 
         elif mode == 'ef':
             data = copy.deepcopy(self.init_data)
-            disp, wd, er, cdp, cef = np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1)
+            disp, wd_0, wd_1, er, cdp, cef = np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1)
             for i in range(n_iter+1):
                 truebs = self.trueBoundary(data, thres)
                 if select_delta: delta = self.selectDelta(data, truebs, select_delta)
                 bs = self.EFBoundary(data, truebs, delta, c, thres)
-                disp[i], wd[i], er[i], cdp[i], cef[i] = self.dpDisp(data, truebs), self.distance(data), self.errorRate(data, truebs, bs), self.dpDisp(data, bs), self.efDisp(data, bs, delta)
-                text = 'Iteration %d: Underlying DP Disp: %.3f, Classification DP Disp: %.3f, Classification EF Disp: %.3f, Wasserstein Distance: %.3f, Error Rate: %.3f' % (
-                        i, disp[i], cdp[i], cef[i] , wd[i], er[i])
+                disp[i], wd_0[i], wd_1[i], er[i], cdp[i], cef[i] = self.dpDisp(data, truebs), self.distance(data)[0], self.distance(data)[1], self.errorRate(data, truebs, bs), self.dpDisp(data, bs), self.efDisp(data, bs, delta)
+                text = 'Iteration %d: Underlying DP Disp: %.3f, Classification DP Disp: %.3f, Classification EF Disp: %.3f, Wasserstein Distance z1: %.3f, Wasserstein Distance z2: %.3f, Error Rate: %.3f' % (
+                        i, disp[i], cdp[i], cef[i] , wd_0[i], wd_1[i], er[i])
                 if plot: self.plot(data, truebs, bs, title = text)
                 data = self.update(data, bs)
-            return pd.DataFrame({'disp':disp, 'wd':wd, 'er':er, 'cdp':cdp, 'cef':cef})
+            return pd.DataFrame({'disp':disp, 'wd_0':wd_0,'wd_1':wd_1, 'er':er, 'cdp':cdp, 'cef':cef})
 
         elif mode == 'be':
             data = copy.deepcopy(self.init_data)
-            disp, wd, er, cdp, cef, cbe = np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1)
+            disp, wd_0, wd_1, er, cdp, cef, cbe = np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1)
             for i in range(n_iter+1):
                 truebs = self.trueBoundary(data, thres)
                 if select_delta: delta = self.selectDelta(data, truebs, select_delta)
                 bs = self.BEBoundary(data, truebs, delta, c, thres)
-                disp[i], wd[i], er[i], cdp[i], cef[i], cbe[i] = self.dpDisp(data, truebs), self.distance(data), self.errorRate(data, truebs, bs), self.dpDisp(data, bs), self.efDisp(data, bs, delta), self.beDisp(data, bs, delta)
-                text = 'Iteration %d: Underlying DP Disp: %.3f, Classification DP Disp: %.3f, Classification EF Disp: %.3f, Classification BE Disp: %.3f, Wasserstein Distance: %.3f, Error Rate: %.3f' % (
-                        i, disp[i], cdp[i], cef[i], cbe[i], wd[i], er[i])
+                disp[i], wd_0[i], wd_1[i], er[i], cdp[i], cef[i], cbe[i] = self.dpDisp(data, truebs), self.distance(data)[0], self.distance(data)[1], self.errorRate(data, truebs, bs), self.dpDisp(data, bs), self.efDisp(data, bs, delta), self.beDisp(data, bs, delta)
+                text = 'Iteration %d: Underlying DP Disp: %.3f, Classification DP Disp: %.3f, Classification EF Disp: %.3f, Classification BE Disp: %.3f, Wasserstein Distance z1: %.3f, Wasserstein Distance z2: %.3f, Error Rate: %.3f' % (
+                        i, disp[i], cdp[i], cef[i], cbe[i], wd_0[i], wd_1[i], er[i])
                 if plot: self.plot(data, truebs, bs, title = text)
                 data = self.update(data, bs)
-            return pd.DataFrame({'disp':disp, 'wd':wd, 'er':er, 'cdp':cdp, 'cef':cef, 'cbe': cbe})
+            return pd.DataFrame({'disp':disp, 'wd_0':wd_0,'wd_1':wd_1, 'er':er, 'cdp':cdp, 'cef':cef, 'cbe': cbe})
 
         elif mode == 'er':
             data = copy.deepcopy(self.init_data)
-            disp, wd, er, cdp, cef, cer = np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1)
+            disp, wd_0, wd_1, er, cdp, cef, cer = np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1)
             for i in range(n_iter+1):
                 truebs = self.trueBoundary(data, thres)
                 if select_delta: delta = self.selectDelta(data, truebs, select_delta)
                 bs = self.ERBoundary(data, truebs, delta, c, thres)
-                disp[i], wd[i], er[i], cdp[i], cef[i], cer[i] = self.dpDisp(data, truebs), self.distance(data), self.errorRate(data, truebs, bs), self.dpDisp(data, bs), self.efDisp(data, bs, delta), self.erDisp(data, bs, delta)
-                text = 'Iteration %d: Underlying DP Disp: %.3f, Classification DP Disp: %.3f, Classification EF Disp: %.3f, Classification ER Disp: %.3f, Wasserstein Distance: %.3f, Error Rate: %.3f' % (
-                        i, disp[i], cdp[i], cef[i], cer[i], wd[i], er[i])
+                disp[i], wd_0[i], wd_1[i], er[i], cdp[i], cef[i], cer[i] = self.dpDisp(data, truebs), self.distance(data)[0], self.distance(data)[1], self.errorRate(data, truebs, bs), self.dpDisp(data, bs), self.efDisp(data, bs, delta), self.erDisp(data, bs, delta)
+                text = 'Iteration %d: Underlying DP Disp: %.3f, Classification DP Disp: %.3f, Classification EF Disp: %.3f, Classification ER Disp: %.3f, Wasserstein Distance z1: %.3f, Wasserstein Distance z2: %.3f, Error Rate: %.3f' % (
+                        i, disp[i], cdp[i], cef[i], cer[i], wd_0[i], wd_1[i], er[i])
                 if plot: self.plot(data, truebs, bs, title = text)
                 data = self.update(data, bs)
-            return pd.DataFrame({'disp':disp, 'wd':wd, 'er':er, 'cdp':cdp, 'cef':cef, 'cer': cer})
+            return pd.DataFrame({'disp':disp, 'wd_0':wd_0, 'wd_1':wd_1, 'er':er, 'cdp':cdp, 'cef':cef, 'cer': cer})
 
         elif mode == 'iler':
             data = copy.deepcopy(self.init_data)
-            disp, wd, er, cdp, cef, cer = np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1)
+            disp, wd_0, wd_1, er, cdp, cef, cer = np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1), np.zeros(n_iter + 1)
             for i in range(n_iter+1):
                 truebs = self.trueBoundary(data, thres)
                 if select_delta: delta = self.selectDelta(data, truebs, select_delta)
                 bs = self.ILERBoundary(data, truebs, delta, c, thres)
-                disp[i], wd[i], er[i], cdp[i], cef[i], cer[i] = self.dpDisp(data, truebs), self.distance(data), self.errorRate(data, truebs, bs), self.dpDisp(data, bs), self.efDisp(data, bs, delta), self.ilerDisp(data, bs, delta)
-                text = 'Iteration %d: Underlying DP Disp: %.3f, Classification DP Disp: %.3f, Classification EF Disp: %.3f, Classification ER Disp: %.3f, Wasserstein Distance: %.3f, Error Rate: %.3f' % (
-                        i, disp[i], cdp[i], cef[i], cer[i], wd[i], er[i])
+                disp[i], wd_0[i], wd_1[i], er[i], cdp[i], cef[i], cer[i] = self.dpDisp(data, truebs), self.distance(data)[0], self.distance(data)[1], self.errorRate(data, truebs, bs), self.dpDisp(data, bs), self.efDisp(data, bs, delta), self.ilerDisp(data, bs, delta)
+                text = 'Iteration %d: Underlying DP Disp: %.3f, Classification DP Disp: %.3f, Classification EF Disp: %.3f, Classification ER Disp: %.3f, Wasserstein Distance z1: %.3f, Wasserstein Distance z2: %.3f, Error Rate: %.3f' % (
+                        i, disp[i], cdp[i], cef[i], cer[i], wd_0[i], wd_1[i], er[i])
                 if plot: self.plot(data, truebs, bs, title = text)
                 data = self.update(data, bs)
-            return pd.DataFrame({'disp':disp, 'wd':wd, 'er':er, 'cdp':cdp, 'cef':cef, 'ciler': cer})
+            return pd.DataFrame({'disp':disp, 'wd_0':wd_0, 'wd_1':wd_1, 'er':er, 'cdp':cdp, 'cef':cef, 'ciler': cer})
 
         else:
             raise ValueError("Unexpected mode %s! Supported mode: \"true\", \"dp\", and \"ef\"." % mode)
