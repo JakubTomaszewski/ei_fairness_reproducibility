@@ -66,6 +66,9 @@ class IncomeDataset():
         train_dataset[['AGEP','WKHP']] = scaler.fit_transform(train_dataset[['AGEP','WKHP']])
         test_dataset[['AGEP','WKHP']] = scaler.transform(test_dataset[['AGEP','WKHP']])
 
+        train_dataset = train_dataset[:800].copy()
+        test_dataset = test_dataset[800:1000].copy()
+
         return train_dataset, test_dataset
 
     def prepare_ndarray(self):
