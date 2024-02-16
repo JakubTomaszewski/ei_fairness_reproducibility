@@ -19,6 +19,7 @@ class IncomeDataset():
         self.sensitive_feature_labels = sensitive_feature_labels
 
         train_dataset, test_dataset = self.preprocess_income_dataset()
+        self.train_dataset, self.test_dataset = train_dataset, test_dataset
 
         self.Z_train_ = train_dataset[self.sensitive_feature_labels]
         self.Y_train_ = train_dataset['y']
@@ -48,6 +49,7 @@ class IncomeDataset():
         ca_features, ca_labels, _ = ACSIncome.df_to_pandas(ca_data)
 
         # Sex
+        # 1: Male, 2: Female
         ca_features['SEX'] = ca_features['SEX'].map({2.0: 1, 1.0: 0}).astype(int)
 
         # Age
@@ -125,6 +127,7 @@ class GermanDataset():
         self.sensitive_feature_labels = sensitive_feature_labels
 
         train_dataset, test_dataset = self.preprocess_german_dataset()
+        self.train_dataset = train_dataset
 
         self.Z_train_ = train_dataset[self.sensitive_feature_labels]
         self.Y_train_ = train_dataset['y']
@@ -273,20 +276,13 @@ class SyntheticDataset():
                     (0,1): {'mean': (-0.2,-0.3), 'cov': np.array([[0.2,0.0], [0.0,0.2]])}
                     }
                 x = np.random.multivariate_normal(mean = x_dist[(y,z)]['mean'], cov = x_dist[(y,z)]['cov'], size = 1)[0]
-                # x = np.random.multivariate_normal(mean = x_dist[(y,z)]['mean'], cov = x_dist[(y,z)]['cov'], size = 1)[0]
-                
-
             xs.append(x)
             ys.append(y)
             zs.append(z)
 
         data = pd.DataFrame(zip(np.array(xs).T[0], np.array(xs).T[1], ys, zs), columns = ['x1', 'x2', 'y', 'z'])
-        # data = data.sample(frac=1).reset_index(drop=True)
         train_dataset = data[:train_samples].copy()
         test_dataset = data[train_samples:].copy()
-        #scaler = StandardScaler()
-        #train_dataset[['x1','x2']] = scaler.fit_transform(train_dataset[['x1','x2']])
-        #test_dataset[['x1','x2']] = scaler.transform(test_dataset[['x1','x2']])
         return train_dataset, test_dataset        
 
     def prepare_ndarray(self):
@@ -330,6 +326,7 @@ class CreditCardClientsDataset():
         self.sensitive_feature_labels = sensitive_feature_labels
 
         train_dataset, test_dataset = self.preprocess_income_dataset()
+        self.train_dataset, self.test_dataset = train_dataset, test_dataset
 
         self.Z_train_ = train_dataset[self.sensitive_feature_labels]
         self.Y_train_ = train_dataset['y']
@@ -364,7 +361,7 @@ class CreditCardClientsDataset():
 
         df = df[df["EDUCATION"].isin([1, 2, 3])]
         df["EDUCATION"] = df["EDUCATION"] - 1
-        df['SEX'] = df['SEX'].map({1: 0, 2: 1}).astype(int)
+        df['SEX'] = df['SEX'].map({1: 0, 2: 1}).astype(int) # 1: Male, 2: Female -> Male: 0, Female: 1
 
         if "AGE" in self.sensitive_feature_labels:
             df['AGE'] = (df["AGE"] > 30).astype(int)
