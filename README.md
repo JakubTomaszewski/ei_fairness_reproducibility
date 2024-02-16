@@ -24,7 +24,7 @@ First install the repo.
 To create virtual environment:
 
 ```shell
-cd ei_fairness
+cd ei_fairness_reproducibility
 conda env create --file environment.yml
 ```
 
