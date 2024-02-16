@@ -151,7 +151,7 @@ class GermanDataset():
         test_dataset : dataframe
             test dataset
         '''
-        dataset = pd.read_csv('../data/german.data',header = None, delim_whitespace = True)
+        dataset = pd.read_csv('../../data/german.data',header = None, delim_whitespace = True)
 
         dataset.columns=['Existing-Account-Status','Month-Duration','Credit-History','Purpose','Credit-Amount','Saving-Account','Present-Employment','Instalment-Rate','Sex','Guarantors','Residence','Property','Age','Installment','Housing','Existing-Credits','Job','Num-People','Telephone','Foreign-Worker','Status']
 
@@ -349,10 +349,10 @@ class CreditCardClientsDataset():
         test_dataset : dataframe
             test dataset
         '''
-        if not os.path.exists('../data/default_of_credit_card_clients.csv'):
-            os.system('wget https://raw.githubusercontent.com/MatteoM95/Default-of-Credit-Card-Clients-Dataset-Analisys/main/dataset/default_of_credit_card_clients.csv -P ../data')
+        if not os.path.exists('../../data/default_of_credit_card_clients.csv'):
+            os.system('wget https://raw.githubusercontent.com/MatteoM95/Default-of-Credit-Card-Clients-Dataset-Analisys/main/dataset/default_of_credit_card_clients.csv -P ../../data')
 
-        df = pd.read_csv('../data/default_of_credit_card_clients.csv')
+        df = pd.read_csv('../../data/default_of_credit_card_clients.csv')
         numeric_features = ["LIMIT_BAL", "BILL_AMT1", "BILL_AMT2", "BILL_AMT3", "BILL_AMT4", "BILL_AMT5", "BILL_AMT6", "PAY_AMT1", "PAY_AMT2", "PAY_AMT3", "PAY_AMT4", "PAY_AMT5", "PAY_AMT6"]
         categorical_features = ["MARRIAGE", "PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6"]
         label_column = "default payment next month"
