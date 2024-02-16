@@ -7,7 +7,7 @@ Links for [paper](https://openreview.net/forum?id=dhYUMMy0_Eg) and [video](https
 Our findings largely substantiate the initial assertions, demonstrating EI’s enhanced performance over Empirical Risk Minimization (ERM) techniques on various test datasets. Furthermore, while affirming the long-term effectiveness in fairness, the study also uncovers challenges in resilience to overfitting, particularly in highly complex models.
 Building upon the original study, the experiments were extended to include a new dataset and multiple sensitive attributes. These additional tests further demonstrated the effec- tiveness of the EI approach, reinforcing its continued success. Our study highlights the importance of adaptable strategies in AI fairness, contributing to the ongoing discourse in this science field.
 
-The reproducibility study and further code extensions were done by students of [University of Amsterdam:](https://www.uva.nl/)
+The reproducibility study and further code extensions were done by students of University of Amsterdam:
 
 - Berkay Chakar
 - Amina Izbassar
