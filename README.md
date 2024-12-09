@@ -1,6 +1,12 @@
-# Reproducibility Study: Equal Improvability: A New Fairness Notion Considering the Long-term Impact (Published at TMLR 2024)
+# Reproducibility Study: Equal Improvability: A New Fairness Notion Considering the Long-term Impact (Published at NeurIPS 2024)
 
-This work was published at the Transactions on Machine Learning Research (TMLR) 2024. The paper can be found [here](https://openreview.net/forum?id=Yj8fUQGXXL).
+### Conferences and Journals
+
+This work was published at the **NeurIPS 2024 Conference** as well as in **Transactions on Machine Learning Research (TMLR) 2024**.
+
+### Links
+
+The paper can be found on [OpenReview](https://openreview.net/forum?id=Yj8fUQGXXL) as well as on the [NeurIPS 2024 website](https://neurips.cc/virtual/2024/poster/99346).
 
 ## Overview
 
@@ -8,16 +14,16 @@ This reproducibility study aims to evaluate the robustness of Equal Improvabilit
 
 To this end, we seek to analyze the three proposed EI-ensuring regularization techniques, i.e. Covariance-based, KDE-based, and Loss-based EI. Our findings largely substantiate the initial assertions, demonstrating EI’s enhanced performance over Empirical Risk Minimization (ERM) techniques on various test datasets. Furthermore, while affirming the long-term effectiveness in fairness, the study also uncovers challenges in resilience to overfitting, particularly in highly complex models. The conducted experiments indicate that the EI approach remains effective in ensuring fairness across multiple sensitive attributes, further underscoring its adaptability and robustness and highlighting its potential for broader applications.
 
-The reproducibility study and further code extensions were done by students of [University of Amsterdam](https://www.uva.nl/), namely:
+![NeurIPS 2024 Poster](docs/poster.png)
+
+The reproducibility study and further code extensions were conducted by students of [University of Amsterdam](https://www.uva.nl/), namely (with equal contribution):
 
 - Berkay Chakar
 - Amina Izbassar
 - Mina Janićijević
 - Jakub Tomaszewski
 
-The original repository was authored by [Ozgur Guldogan](https://guldoganozgur.github.io)\*, [Yuchen Zeng](https://yzeng58.github.io/zyc_cv/)\*, [Jy-yong Sohn](https://itml.yonsei.ac.kr/professor), [Ramtin Pedarsani](https://web.ece.ucsb.edu/~ramtin/), and [Kangwook Lee](https://kangwooklee.com).
-
-![Poster](poster.png)
+The original repository was authored by [Ozgur Guldogan](https://guldoganozgur.github.io), [Yuchen Zeng](https://yzeng58.github.io/zyc_cv/), [Jy-yong Sohn](https://itml.yonsei.ac.kr/professor), [Ramtin Pedarsani](https://web.ece.ucsb.edu/~ramtin/), and [Kangwook Lee](https://kangwooklee.com).
 
 ## Installation instructions
 
